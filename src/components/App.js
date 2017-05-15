@@ -3,7 +3,8 @@ import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
 import * as gameActions from '../actions';
 
-import {levels} from './Logic/levels.js';
+import { levels } from './Logic/levels.js';
+import * as gamehelpers from './Logic/grid.js';
 
 import Logo from './Logo/Logo.js';
 import Board from './Board/Board.js';
@@ -18,13 +19,18 @@ class App extends Component {
         }
     }
     restart() {
-      // reset game state      
+        const { game } = this.props;
+        const level = levels[game.level];      
+        // reset game state
+        this.props.updateClicks(0);
+        let grid = gamehelpers.populateGrid(level.numberofrows, level.numberofcolors);
+        this.props.createGrid(grid);
     }
     render() {
-        const {game} = this.props;
+        const { game } = this.props;
         const level = levels[game.level];
         return (
-          <div className="content">
+            <div className="content">
             <div className="header">
               <h1>Color Flood <i className="triggerInfo">?</i></h1>
               <Logo />
@@ -47,18 +53,18 @@ class App extends Component {
     }
 }
 
-function mapStateToProps(state) {  
-  return {
-    game: state.gameReducer
-  }
+function mapStateToProps(state) {
+    return {
+        game: state.gameReducer
+    }
 }
 
-function mapDispatchToProps(dispatch) {  
-  return bindActionCreators({
-    updateClicks: gameActions.updateClicks,
-    createGrid: gameActions.createGrid,
-    loadBlocks: gameActions.loadBlocks
-  }, dispatch);
+function mapDispatchToProps(dispatch) {
+    return bindActionCreators({
+        updateClicks: gameActions.updateClicks,
+        createGrid: gameActions.createGrid,
+        loadBlocks: gameActions.loadBlocks
+    }, dispatch);
 }
 
-export default connect(mapStateToProps, mapDispatchToProps)(App);  
+export default connect(mapStateToProps, mapDispatchToProps)(App);

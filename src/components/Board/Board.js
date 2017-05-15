@@ -1,6 +1,8 @@
 import React, { Component } from 'react';
 import Block from '../Block/Block.js';
 import { colors } from '../Logic/levels.js';
+
+import * as gamehelpers from '../Logic/grid.js';
 import './Board.css';
 
 export default class Board extends Component {
@@ -13,12 +15,12 @@ export default class Board extends Component {
     // }
 
     componentDidMount() {
-        let grid = this.populateGrid();
-        this.renderBlocks(grid);
+        let grid = this.loadGrid(this.props.numberofrows, this.props.numberofcolors);
+        this.renderBlocks(grid, this.props.numberofrows);
     }
 
-    rand(n) {
-        return Math.floor(Math.random() * n);
+    componentDidReceiveProps() {
+        console.log(this.props);
     }
 
     clickbox(x, y) {
@@ -36,56 +38,40 @@ export default class Board extends Component {
         if (oldcolor === newcolor) return;
 
         // otherwise increase clicks
-        let clicks = parseInt(this.props.game.clicks + 1);
+        let clicks = this.props.game.clicks + 1;
         this.props.updateClicks(clicks);
 
         // and repaint the grid
         this.paint(job, oldcolor, newcolor);
     }
 
-    populateGrid() {
-        let grid = [];
-
-        // create the grid array
-        for (let i = 0; i < this.props.numberofrows; i++) {
-
-            // make a new array for each row of the grid
-            grid[i] = [];
-            for (let j = 0; j < this.props.numberofrows; j++) {
-
-                // get a random number between 0 and the # of available colors
-                let c = this.rand(this.props.numberofcolors);
-
-                // assigned that number to a slot in the grid
-                grid[i][j] = c;
-            }
-        }
-
+    loadGrid(rows, colors) {
+        let grid = gamehelpers.populateGrid(rows, colors);
         this.props.createGrid(grid);
-
         return grid;
     }
 
-    renderBlocks(grid) {
+    renderBlocks(grid, rows) {
         let blocks = [];
         // create the grid array
-        for (let i = 0; i < this.props.numberofrows; i++) {
-            for (let j = 0; j < this.props.numberofrows; j++) {
+        for (let i = 0; i < rows; i++) {
+            for (let j = 0; j < rows; j++) {
 
-                // get a random number between 0 and the # of available colors
+                // get the number from the current grid block
                 let c = grid[i][j];
                 let backgroundColor = colors[c];
 
                 // assign a dom element to a slot in the box grid
                 blocks.push(<Block 
-                    key={"row"+i+"col"+j}
-                    clickbox={(x, y)=>this.clickbox(x,y)} 
-                    xcoord={i} 
-                    ycoord={j} 
-                    cols={this.props.numberofrows}
-                    backgroundColor={backgroundColor} />);
+                key={"row"+i+"col"+j}
+                clickbox={(x, y)=>this.clickbox(x,y)} 
+                xcoord={i} 
+                ycoord={j} 
+                cols={rows}
+                backgroundColor={backgroundColor} />);
             }
         }
+
         this.props.loadBlocks(blocks);
     }
 
@@ -122,12 +108,12 @@ export default class Board extends Component {
         }
 
         // update grid state
-        this.props.createGrid(grid, null);
+        this.props.createGrid(grid);
 
         if (newjob.length > 0) {
             setTimeout(function() {
                 _this.paint(newjob, oldcolor, newcolor);
-                _this.renderBlocks(grid);            
+                _this.renderBlocks(grid, _this.props.numberofrows);
             }, 45);
         } else {
             // check if they've won
