@@ -1,0 +1,16 @@
+.gameBoard {
+  background-color: white;
+  margin: 0 auto;
+  padding: 1.6rem;
+  max-width: 50vh;
+}
+
+.game {
+  background: white;
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0 auto;
+  height: 100vw;
+  max-width: 50vh;
+  max-height: 50vh;
+}

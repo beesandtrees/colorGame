@@ -1,0 +1,98 @@
+h1 {
+  margin: 0;
+  color: white;
+  font-weight: normal;
+}
+
+.triggerInfo {
+  background: white;
+  border-radius: 50%;
+  color: #222;
+  display: inline-block;
+  font-size: 16px;
+  height: 22px;
+  line-height: 22px;
+  text-align: center;
+  font-style: normal;
+  position: relative;
+  top: -5px;
+  width: 22px;
+}
+
+.header {
+  margin: 0 auto 16px;
+  padding: 0.6rem 0 0;
+  max-width: 50vh;
+  text-align: center;
+}
+
+.count {
+  font-weight: lighter;
+  padding: 2px;
+  font-size: 24px;
+  color: white;
+}
+
+.count span {
+  font-weight: bold;
+  text-align: center;
+}
+
+.content {
+  background-color: #79C05B;
+  height: 100vh;
+  width: 100vw;
+}
+
+.lilac {
+  background-color: #8D85F2;
+}
+
+.lavendar {
+  background-color: #B857F3;
+}
+
+.fuchsia {
+  background-color: #F171E2;
+}
+
+.red {
+  background-color: #FF5A5A;
+}
+
+.orange {
+  background-color: #FFA424;
+}
+
+.lime {
+  background-color: #A4CA57;
+}
+
+.aqua {
+  background-color: #3DBFCE;
+}
+
+.blue {
+  background-color: #30A3FE;
+}
+
+.dblue {
+  background-color: #3771FF;
+}
+
+.purple {
+  background-color: #7256D9;
+}
+
+.newgame {
+  background-color: white;
+  color: #212121;
+  white-space: nowrap;
+  margin-right: 10px;
+  padding: 5px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin: 1.6rem auto;
+  width: 100px;
+  text-align: center;
+}

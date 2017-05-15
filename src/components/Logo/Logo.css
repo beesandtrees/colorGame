@@ -1,0 +1,104 @@
+svg {
+  background-color: white;
+  border: 2px solid #FF5A5A;
+  height: 48px;
+  padding: 2px;
+  width: 48px;
+  transform: scaleX(-1);
+}
+
+svg rect {
+  animation: updateR infinite 5s linear; 
+}
+
+#group0 {
+ animation: updateColor infinite 5s linear;
+}
+
+#group1 {
+ animation-delay: 1s;
+ animation: updateColor1 infinite 5s linear;
+}
+
+#group2 {
+ animation-delay: 2s;
+ animation: updateColor2 infinite 5s linear;
+}
+
+#group3 {
+ animation-delay: 3s;
+ animation: updateColor3 infinite 5s linear;
+}
+
+#group4 {
+ animation-delay: 4s;
+ animation: updateColor4 infinite 5s linear;
+}
+
+@keyframes updateR {
+ 0%,75% {
+  rx: 10;
+  ry: 10; 
+ }
+ 90%, 100% {
+  rx: 0;
+  ry: 0; 
+ }
+}
+
+@keyframes updateColor {
+ 0%,15% {
+  fill: #FFA424;
+ }
+ 18%,95% {
+  fill: #FF5A5A; 
+ }
+ 100% {
+  fill: #FFA424; 
+ }
+}
+
+@keyframes updateColor1 {
+ 0%,30% {
+  fill: #A4CA57;
+ }
+ 34%,96% {
+  fill: #FF5A5A;
+ }
+ 100% {
+  fill: #A4CA57;  
+ } 
+}
+
+
+@keyframes updateColor2 {
+ 0%,45% {
+  fill: #8D85F2;
+ }
+ 48%,97% {
+  fill: #FF5A5A;
+ }
+ 100% {
+  fill: #8D85F2; 
+ } 
+}
+
+
+@keyframes updateColor3 {
+ 0%,60% {
+  fill: #3DBFCE;
+ }
+ 64%,100% {
+  fill: #FF5A5A;  
+ }
+}
+
+
+@keyframes updateColor4 {
+ 0%, 75% {
+  fill: #3771FF;
+ }
+ 78%, 100% {
+  fill: #FF5A5A;  
+ }
+}

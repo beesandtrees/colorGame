@@ -1,0 +1,61 @@
+.block {
+  border-color: white;
+  border-style: solid;
+  border-width: 4px;
+  border-radius: 50%;
+  box-sizing: border-box;
+  transition: all 0.33s;
+}
+
+.block-3 {
+  border-width: 30px;
+  width: 33.33%;
+}
+
+.block-4 {
+  width: 25%;
+}
+
+.block-5 {
+  width: 20%;
+}
+
+.block-6 {
+  border-width: 8px;
+  width: 16.66%;
+}
+
+.block-7 {
+  border-width: 8px;
+  width: 14.28%;
+}
+
+.block-8 {
+  border-width: 8px;
+  width: 12.5%;
+}
+
+.block-9 {
+  border-width: 6px;
+  width: 11.11%;
+}
+
+.block-10 {
+  border-width: 6px;
+  width: 10%;
+}
+
+.block-11 {
+  border-width: 6px;
+  width: 9.09%;
+}
+
+.block-12 {
+  border-width: 6px;
+  width: 8.33%;
+}
+
+.solved .block {
+  border-radius: 0;
+  border-width: 0;
+}
