@@ -7,10 +7,17 @@ export function updateClicks(click) {
   };
 }
 
-export function createGrid(grid, blocks) {
+export function createGrid(grid) {
   return {
     type: types.GRID,
-    grid,
+    grid
+  };
+}
+
+export function loadBlocks(blocks) {
+  return {
+    type: types.BLOCKS,
     blocks
   };
 }
+

@@ -17,6 +17,9 @@ class App extends Component {
             count: 20,
         }
     }
+    restart() {
+      // reset game state      
+    }
     render() {
         const {game} = this.props;
         const level = levels[game.level];
@@ -31,6 +34,7 @@ class App extends Component {
                 game={game} 
                 updateClicks={this.props.updateClicks} 
                 createGrid={this.props.createGrid}
+                loadBlocks={this.props.loadBlocks}
                 numberofrows={level.numberofrows}
                 numberofcolors={level.numberofcolors}
                 />
@@ -52,7 +56,8 @@ function mapStateToProps(state) {
 function mapDispatchToProps(dispatch) {  
   return bindActionCreators({
     updateClicks: gameActions.updateClicks,
-    createGrid: gameActions.createGrid
+    createGrid: gameActions.createGrid,
+    loadBlocks: gameActions.loadBlocks
   }, dispatch);
 }
 

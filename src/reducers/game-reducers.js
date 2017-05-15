@@ -1,7 +1,7 @@
 import * as types from "../actions/types";
 
 const initialState = {
-    level: 1,
+    level: 4,
     clicks: 0,
     grid: [],
     blocks: []
@@ -10,17 +10,20 @@ const initialState = {
 export default function GameReducer(state = initialState, action = {}) {
     switch (action.type) {
         case types.CLICKS:
-        	let updatedClicks = state.clicks + 1
             return {
                 ...state,
-                clicks: updatedClicks
+                clicks: action.click
             };
         case types.GRID:
             return {
                 ...state,
-                grid: action.grid,
+                grid: action.grid
+            }; 
+        case types.BLOCKS:
+            return {
+                ...state,
                 blocks: action.blocks
-            };            
+            };                        
         default:
             return state;
     }
