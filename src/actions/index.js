@@ -21,3 +21,12 @@ export function loadBlocks(blocks) {
   };
 }
 
+export function didWin(won, level) {
+  return {
+    type: types.HASWON,
+    won,
+    level
+  };
+}
+
+

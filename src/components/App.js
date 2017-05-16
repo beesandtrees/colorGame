@@ -8,21 +8,17 @@ import * as gamehelpers from './Logic/grid.js';
 
 import Logo from './Logo/Logo.js';
 import Board from './Board/Board.js';
+import WinLose from './WinLose/WinLose.js';
 
 import './App.css';
 
 class App extends Component {
-    constructor(props) {
-        super(props);
-        this.state = {
-            count: 20
-        }
-    }
     restart() {
         const { game } = this.props;
         const level = levels[game.level];      
         // reset game state
         this.props.updateClicks(0);
+        this.props.didWin(null, game.level);
         let grid = gamehelpers.populateGrid(level.numberofrows, level.numberofcolors);
         this.props.createGrid(grid);
     }
@@ -42,8 +38,14 @@ class App extends Component {
                 updateClicks={this.props.updateClicks} 
                 createGrid={this.props.createGrid}
                 loadBlocks={this.props.loadBlocks}
+                didWin={this.props.didWin}
                 numberofrows={level.numberofrows}
                 numberofcolors={level.numberofcolors}
+                maxclick={level.maxclick}
+                />
+            <WinLose 
+                won={game.hasWon}
+                restart={()=>this.restart()}
                 />
             <div className="header">
               <small className="instructions">Click the dots to change their colors. Your goal is to make them all match the background.</small>            
@@ -64,7 +66,8 @@ function mapDispatchToProps(dispatch) {
     return bindActionCreators({
         updateClicks: gameActions.updateClicks,
         createGrid: gameActions.createGrid,
-        loadBlocks: gameActions.loadBlocks
+        loadBlocks: gameActions.loadBlocks,
+        didWin: gameActions.didWin
     }, dispatch);
 }
 

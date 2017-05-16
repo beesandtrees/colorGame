@@ -1,4 +1,4 @@
-function rand(n) {
+export function rand(n) {
     return Math.floor(Math.random() * n);
 }
 

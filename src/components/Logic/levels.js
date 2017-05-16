@@ -1,40 +1,51 @@
-export const levels = {
-    "1": {
-        "numberofrows": 4,
+export const levels = [{
+        "numberofrows": 5,
         "maxclick": 25,
         "numberofcolors": 4
     },
-    "2": {
+    {
         "numberofrows": 5,
         "maxclick": 25,
         "numberofcolors": 5
     },
-    "3": {
+    {
         "numberofrows": 6,
         "maxclick": 25,
+        "numberofcolors": 5
+    },
+    {
+        "numberofrows": 6,
+        "maxclick": 30,
         "numberofcolors": 6
     },
-    "4": {
-        "numberofrows": 10,
+    {
+        "numberofrows": 6,
         "maxclick": 30,
-        "numberofcolors": 8
+        "numberofcolors": 6
     },
-    "5": {
+    {
+        "numberofrows": 6,
+        "maxclick": 30,
+        "numberofcolors": 6
+    },
+    {
+        "numberofrows": 6,
+        "maxclick": 30,
+        "numberofcolors": 6
+    },
+    {
+        "numberofrows": 6,
+        "maxclick": 30,
+        "numberofcolors": 6
+    },
+    {
+        "numberofrows": 6,
+        "maxclick": 30,
+        "numberofcolors": 6
+    },
+    {
         "numberofrows": 10,
         "maxclick": 30,
         "numberofcolors": 10
     }
-}
-
-export const colors = [
-    'grape',
-    'fuchsia',
-    'pink',
-    'red',
-    'aqua',
-    'lime',
-    'orange',
-    'blue',
-    'dblue',
-    'purple'
-];
+]

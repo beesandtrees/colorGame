@@ -1,18 +1,11 @@
 import React, { Component } from 'react';
 import Block from '../Block/Block.js';
-import { colors } from '../Logic/levels.js';
+import { colors } from '../Logic/helpers.js';
 
 import * as gamehelpers from '../Logic/grid.js';
 import './Board.css';
 
 export default class Board extends Component {
-    // constructor(props) {
-    //     super(props);
-    //     this.state = {
-    //         blocks: [],
-    //         rowcount: 12,
-    //     }
-    // }
 
     componentDidMount() {
         let grid = this.loadGrid(this.props.numberofrows, this.props.numberofcolors);
@@ -20,9 +13,8 @@ export default class Board extends Component {
     }
 
     componentWillReceiveProps(nextProps) {
-        // console.log(nextProps.grid);
-        if(this.props.grid !== nextProps.grid) {
-            this.renderBlocks(nextProps.grid, this.props.numberofrows);            
+        if (this.props.grid !== nextProps.grid) {
+            this.renderBlocks(nextProps.grid, this.props.numberofrows);
         }
     }
 
@@ -120,6 +112,37 @@ export default class Board extends Component {
             }, 45);
         } else {
             // check if they've won
+            _this.checkForWin();
+        }
+    }
+
+    checkForWin() {
+        var c = this.props.grid[0][0];
+
+        // if number of clicks is less than or equal to maxclick win will be set to true
+        var win = (this.props.game.clicks <= this.props.maxclick);
+
+        // this checks to see if all of the boxes are the same color
+        // as soon as it reachesa box that is a different color from the top left corner 
+        // it breaks out of the loop
+        // we will switch this to _goalColor_
+        if (win) {
+            for (var i = 0; i < this.props.numberofrows; i++) {
+                for (var j = 0; j < this.props.numberofrows; j++) {
+                    if (this.props.grid[i][j] !== c) {
+                        win = false;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // update redux state of hasWon
+        if (win) {
+            let upperLevel = this.props.game.level + 1;
+            this.props.didWin(true, upperLevel);
+        } else if (this.props.game.clicks >= this.props.maxclick) {
+            this.props.didWin(false, this.props.game.level);
         }
     }
 
