@@ -19,8 +19,11 @@ export default class Board extends Component {
         this.renderBlocks(grid, this.props.numberofrows);
     }
 
-    componentDidReceiveProps() {
-        console.log(this.props);
+    componentWillReceiveProps(nextProps) {
+        // console.log(nextProps.grid);
+        if(this.props.grid !== nextProps.grid) {
+            this.renderBlocks(nextProps.grid, this.props.numberofrows);            
+        }
     }
 
     clickbox(x, y) {

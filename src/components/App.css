@@ -44,15 +44,15 @@ h1 {
   width: 100vw;
 }
 
-.lilac {
-  background-color: #8D85F2;
-}
-
-.lavendar {
-  background-color: #B857F3;
+.grape {
+  background-color: #8F3EB7;
 }
 
 .fuchsia {
+  background-color: #B857F3;
+}
+
+.pink {
   background-color: #F171E2;
 }
 
@@ -73,11 +73,11 @@ h1 {
 }
 
 .blue {
-  background-color: #30A3FE;
+  background-color: #5585FB;
 }
 
 .dblue {
-  background-color: #3771FF;
+  background-color: #7256D9;
 }
 
 .purple {

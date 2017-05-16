@@ -1,7 +1,7 @@
 .gameBoard {
   background-color: white;
-  margin: 0 auto;
-  padding: 1.6rem;
+  margin: 1rem auto;
+  padding: 0.8rem;
   max-width: 50vh;
 }
 

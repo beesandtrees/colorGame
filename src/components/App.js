@@ -15,7 +15,7 @@ class App extends Component {
     constructor(props) {
         super(props);
         this.state = {
-            count: 20,
+            count: 20
         }
     }
     restart() {
@@ -36,7 +36,8 @@ class App extends Component {
               <Logo />
               <div className="count">Moves Left: <span>{level.maxclick - game.clicks}</span></div>
             </div>            
-            <Board 
+            <Board
+                grid={game.grid} 
                 game={game} 
                 updateClicks={this.props.updateClicks} 
                 createGrid={this.props.createGrid}

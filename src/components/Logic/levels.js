@@ -27,12 +27,12 @@ export const levels = {
 }
 
 export const colors = [
-    'lilac',
+    'grape',
+    'fuchsia',
+    'pink',
     'red',
     'aqua',
     'lime',
-    'lavendar',
-    'fuchsia',
     'orange',
     'blue',
     'dblue',
