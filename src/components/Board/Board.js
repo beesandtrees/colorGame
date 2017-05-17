@@ -6,6 +6,13 @@ import * as gamehelpers from '../Logic/grid.js';
 import './Board.css';
 
 export default class Board extends Component {
+    constructor(props) {
+        super(props);
+        let shuffleColors = gamehelpers.fisherYates(colors);
+        this.state = {
+            colors: shuffleColors
+        };        
+    }
 
     componentDidMount() {
         let grid = this.loadGrid(this.props.numberofrows, this.props.numberofcolors);
@@ -14,7 +21,7 @@ export default class Board extends Component {
 
     componentWillReceiveProps(nextProps) {
         if (this.props.grid !== nextProps.grid) {
-            this.renderBlocks(nextProps.grid, this.props.numberofrows);
+            this.renderBlocks(nextProps.grid, nextProps.numberofrows);
         }
     }
 
@@ -23,10 +30,10 @@ export default class Board extends Component {
         let job = [0, 0];
 
         // oldcolor is the first number in the grid
-        let oldcolor = this.props.game.grid[0][0];
+        let oldcolor = this.props.game.grid[0][0][0];
 
         // newcolor is the number from div you clicked
-        let newcolor = this.props.game.grid[x][y];
+        let newcolor = this.props.game.grid[x][y][0];
 
         // if you clicked on the color that's already in the corner then return
         // no loss no gain
@@ -52,9 +59,10 @@ export default class Board extends Component {
         for (let i = 0; i < rows; i++) {
             for (let j = 0; j < rows; j++) {
 
-                // get the number from the current grid block
-                let c = grid[i][j];
-                let backgroundColor = colors[c];
+                // get the number from the current grid block                
+                let c = grid[i][j][0];
+                let active = grid[i][j][1];
+                let backgroundColor = this.state.colors[c];
 
                 // assign a dom element to a slot in the box grid
                 blocks.push(<Block 
@@ -63,6 +71,7 @@ export default class Board extends Component {
                 xcoord={i} 
                 ycoord={j} 
                 cols={rows}
+                active={active}
                 backgroundColor={backgroundColor} />);
             }
         }
@@ -79,25 +88,25 @@ export default class Board extends Component {
             let y = job.pop();
             let x = job.pop();
 
-            if (oldcolor !== grid[x][y]) continue;
+            if (oldcolor !== grid[x][y][0]) continue;
 
-            grid[x][y] = newcolor;
+            grid[x][y] = [newcolor, true];
 
             // check surrounding blocks to see what color they are 
             // and therefore if they should be updated
-            if (x < (this.props.numberofrows - 1) && grid[x + 1][y] === oldcolor) {
+            if (x < (this.props.numberofrows - 1) && grid[x + 1][y][0] === oldcolor) {
                 newjob.push(x + 1, y);
             }
 
-            if (y < (this.props.numberofrows - 1) && grid[x][y + 1] === oldcolor) {
+            if (y < (this.props.numberofrows - 1) && grid[x][y + 1][0] === oldcolor) {
                 newjob.push(x, y + 1);
             }
 
-            if (x > 0 && grid[x - 1][y] === oldcolor) {
+            if (x > 0 && grid[x - 1][y][0] === oldcolor) {
                 newjob.push(x - 1, y);
             }
 
-            if (y > 0 && grid[x][y - 1] === oldcolor) {
+            if (y > 0 && grid[x][y - 1][0] === oldcolor) {
                 newjob.push(x, y - 1);
             }
         }
@@ -117,7 +126,7 @@ export default class Board extends Component {
     }
 
     checkForWin() {
-        var c = this.props.grid[0][0];
+        var c = this.props.grid[0][0][0];
 
         // if number of clicks is less than or equal to maxclick win will be set to true
         var win = (this.props.game.clicks <= this.props.maxclick);
@@ -129,7 +138,7 @@ export default class Board extends Component {
         if (win) {
             for (var i = 0; i < this.props.numberofrows; i++) {
                 for (var j = 0; j < this.props.numberofrows; j++) {
-                    if (this.props.grid[i][j] !== c) {
+                    if (this.props.grid[i][j][0] !== c) {
                         win = false;
                         break;
                     }
@@ -148,7 +157,7 @@ export default class Board extends Component {
 
     render() {
         return (
-            <div className="gameBoard">
+            <div className={"gameBoard won-" + this.props.game.hasWon}>
               <div className="game">
                 {this.props.game.blocks}
               </div>

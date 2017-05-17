@@ -1,8 +1,14 @@
 .block {
+  border-style: solid;
   border-radius: 50%;
+  border-width: 6px;
   box-sizing: border-box;
   cursor: pointer;
   transition: all 0.33s;
+}
+
+.block.true {
+  border-color: white;
 }
 
 .block-3 {
@@ -45,6 +51,8 @@
   width: 8.33%;
 }
 
-.solved .block {
-  border-radius: 0;
+.won-true .block,
+.won-false .block {
+    border: 0;
+    border-radius: 0;
 }

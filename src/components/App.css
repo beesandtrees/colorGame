@@ -45,43 +45,53 @@ h1 {
 }
 
 .grape {
-  background-color: #8F3EB7;
+  background-color: #a340d4;
+  border-color: hsl(280, 63%, 68%);
 }
 
 .fuchsia {
-  background-color: #B857F3;
+  background-color: hsl(302, 100%, 72%);
+  border-color: hsl(316, 100%, 84%);
 }
 
 .pink {
-  background-color: #F171E2;
+  background-color: hsl(307, 100%, 83%);
+  border-color: hsl(307, 100%, 90%);
 }
 
 .red {
   background-color: #FF5A5A;
+  border-color: hsl(0, 100%, 80%);
 }
 
 .orange {
   background-color: #FFA424;
+  border-color: hsl(35, 100%, 72%);
 }
 
 .lime {
-  background-color: #A4CA57;
+  background-color: #79C05B;
+  border-color: hsl(80, 52%, 73%);
 }
 
 .aqua {
   background-color: #3DBFCE;
+  border-color: hsl(186, 60%, 73%);
 }
 
 .blue {
-  background-color: #5585FB;
+  background-color: hsl(223, 100%, 75%);
+  border-color: hsl(223, 100%, 83%);
 }
 
 .dblue {
-  background-color: #7256D9;
+  background-color: hsl(238, 67%, 56%);
+  border-color: hsl(238, 100%, 79%);
 }
 
 .purple {
-  background-color: #7256D9;
+  background-color: #7f4af1;
+  border-color: hsl(253, 100%, 76%);
 }
 
 .newgame {

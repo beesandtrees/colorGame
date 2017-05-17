@@ -1,21 +1,29 @@
-.hidden {
-  display: none;
-}
-
 .winlose {
   align-items: center;
-  background: rgba(255, 255, 255, 0.9);
+  background: white;
+  border: 6px solid #3DBFCE;
+  border-radius: 20px;
   color: #333;
   display: flex;
   flex-direction: column;
   font-size: 42px;
-  height: 100vh;
+  height: 260px;
   justify-content: center;
-  left: 0;
+  left: calc(50% - 138px);
   position: fixed;
-  top: 0;
   text-align: center;
-  width: 100vw;
+  top: 205px;
+  transition: all 0.375s;
+  transform: translateY(0);
+  width: 260px;
+}
+
+.winlose p {
+  margin: 0 0 2rem 0;
+}
+
+.hidden {
+  transform: translateY(100vh);
 }
 
 .btn {
@@ -25,5 +33,7 @@
   cursor: pointer;
   display: block;
   font-size: 26px;
+  margin: 0 auto;
   padding: 0.4rem 1.6rem;
+  width: 140px;
 }

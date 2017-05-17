@@ -13,13 +13,29 @@ import WinLose from './WinLose/WinLose.js';
 import './App.css';
 
 class App extends Component {
-    restart() {
+    restart(startover) {
         const { game } = this.props;
-        const level = levels[game.level];      
+        let level = levels[game.level];
+
+        if (startover) {
+            level = levels[0];
+            this.props.didWin(null, 0);
+        } else {
+            if (level) {
+                this.props.didWin(null, game.level);
+            } else {
+                let setLevel = game.level - 1;
+                level = levels[setLevel];
+                this.props.didWin(null, setLevel);
+            }
+        }
+
+        console.log(level);
         // reset game state
         this.props.updateClicks(0);
-        this.props.didWin(null, game.level);
+
         let grid = gamehelpers.populateGrid(level.numberofrows, level.numberofcolors);
+
         this.props.createGrid(grid);
     }
     render() {
@@ -45,7 +61,7 @@ class App extends Component {
                 />
             <WinLose 
                 won={game.hasWon}
-                restart={()=>this.restart()}
+                restart={(startover)=>this.restart(startover)}
                 />
             <div className="header">
               <small className="instructions">Click the dots to change their colors. Your goal is to make them all match the background.</small>            
