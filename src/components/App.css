@@ -1,22 +1,67 @@
-h1 {
-  margin: 0;
-  color: white;
-  font-weight: normal;
+.h1 {
+    margin: 0;
+    color: white;
+    font-size: 38px;
+    font-weight: normal;
+    position: relative;
 }
 
 .triggerInfo {
-  background: white;
-  border-radius: 50%;
-  color: #222;
+    background: transparent;
+    border: 2px solid white;
+    border-radius: 50%;
+    box-sizing: border-box;
+    color: white;
+    cursor: pointer;
+    display: inline-block;
+    font-size: 16px;
+    height: 22px;
+    line-height: 1;
+    text-align: center;
+    font-style: normal;
+    position: absolute;
+    right: 45px;
+    top: 9px;
+    width: 22px;
+    transition: background-color 0.375s;
+}
+
+.triggerInfo span {
   display: inline-block;
-  font-size: 16px;
-  height: 22px;
-  line-height: 22px;
-  text-align: center;
-  font-style: normal;
   position: relative;
-  top: -5px;
-  width: 22px;
+  top: -2px;
+}
+
+.triggerInfo.triggered {
+  background: white;
+  border-radius: 8px;
+  color: #222;
+  height: 80px;
+  right: 32px;
+  line-height: 1.4;
+  font-style: normal;
+  padding: 1rem 2rem;
+  position: absolute;
+  text-align: left;
+  top: 10px;
+  width: 280px;
+}
+
+.triggerInfo.triggered span {
+    border: 2px solid #222;
+    border-radius: 50%;
+    box-sizing: border-box;
+    display: inline-block;
+    float: right;
+    font-weight: bold;
+    position: relative;
+    right: -11px;
+    text-align: center;
+    width: 22px;
+}
+
+.triggerInfo.triggered small {
+  display: inline-block;
 }
 
 .header {

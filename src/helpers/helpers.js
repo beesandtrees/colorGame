@@ -27,12 +27,11 @@ export function createLevel(l) {
     // 0-4 === 1, 5-8 === 2, ...
 
     let level = Math.ceil(l/4),
-        rows = level + 7,
+        rows = level + 8,
         colors = (l%4) + 4,
         max = (l+colors)*2,
         maxclick = max > 15 ? max : 15 + l;
 
-console.log(max, maxclick);
     return {
         "numberofrows": rows,
         "maxclick": maxclick,
@@ -40,8 +39,9 @@ console.log(max, maxclick);
     }
 }
 
-export function populateGrid(rows, colors) {
+export function populateGrid(rows, colors, goalColor) {
     let grid = [];
+    let last = (rows-1)*2;
 
     // create the grid array
     for (let i = 0; i < rows; i++) {
@@ -51,7 +51,8 @@ export function populateGrid(rows, colors) {
         for (let j = 0; j < rows; j++) {
 
             // get a random number between 0 and the # of available colors
-            let c = rand(colors);
+            let c = i+j === last ? goalColor : rand(colors);
+
             let active = i === 0 && j === 0 ? true : false;
 
             // assigned that number to a slot in the grid

@@ -24,7 +24,15 @@ export default class WinLose extends Component {
 	            	<span onClick={this.props.restart} className="btn">Try Again</span>
 	            </div>
 	        )    		
-    	} else {
+    	} else if ( winner === 'almost') {
+            resultsText = (
+                <div>
+                    <p>Mismatch!</p>
+                    <p>Make sure the last color you click matches the background.</p>
+                    <span onClick={this.props.restart} className="btn">Try Again</span>
+                </div>
+            )           
+        } else {
     		classes = "hidden";
     	}
 
