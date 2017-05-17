@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
-import { winText } from '../Logic/helpers.js';
-import { rand } from '../Logic/grid.js';
+import { winText } from '../../helpers/constants.js';
+import { rand } from '../../helpers/helpers.js';
 
 import './WinLose.css';
 
@@ -21,7 +21,7 @@ export default class WinLose extends Component {
 	        resultsText = (
 	            <div>
 	            	<p>Maybe Next Time!</p>
-	            	<span onClick={()=>this.props.restart(true)} className="btn">Restart</span>
+	            	<span onClick={this.props.restart} className="btn">Try Again</span>
 	            </div>
 	        )    		
     	} else {

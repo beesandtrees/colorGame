@@ -21,10 +21,16 @@ export function loadBlocks(blocks) {
   };
 }
 
-export function didWin(won, level) {
+export function didWin(won) {
   return {
     type: types.HASWON,
-    won,
+    won
+  };
+}
+
+export function updateLevel(level) {
+  return {
+    type: types.LEVEL,
     level
   };
 }

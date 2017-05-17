@@ -21,6 +21,25 @@ export function fisherYates(array) {
     return array;
 }
 
+export function createLevel(l) {
+
+    // l = game.level
+    // 0-4 === 1, 5-8 === 2, ...
+
+    let level = Math.ceil(l/4),
+        rows = level + 7,
+        colors = (l%4) + 4,
+        max = (l+colors)*2,
+        maxclick = max > 15 ? max : 15 + l;
+
+console.log(max, maxclick);
+    return {
+        "numberofrows": rows,
+        "maxclick": maxclick,
+        "numberofcolors": colors
+    }
+}
+
 export function populateGrid(rows, colors) {
     let grid = [];
 

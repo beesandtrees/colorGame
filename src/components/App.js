@@ -3,9 +3,8 @@ import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
 import * as gameActions from '../actions';
 
-import { levels } from './Logic/levels.js';
-import { colors } from './Logic/helpers.js';
-import * as gamehelpers from './Logic/grid.js';
+import { colors } from '../helpers/constants.js';
+import * as gamehelpers from '../helpers/helpers.js';
 
 import Logo from './Logo/Logo.js';
 import Board from './Board/Board.js';
@@ -18,32 +17,32 @@ class App extends Component {
         super(props);
         let shuffleColors = gamehelpers.fisherYates(colors);
         this.state = {
-            colors: shuffleColors
+            colors: shuffleColors,
+            level: gamehelpers.createLevel(this.props.game.level)
         };
     }
     restart(startover) {
         const { game } = this.props;
-        let level = levels[game.level];
-
-        if (startover) {
-            level = levels[0];
-            this.props.didWin(null, 0);
-        } else {
-            if (level) {
-                this.props.didWin(null, game.level);
-            } else {
-                let setLevel = game.level - 1;
-                level = levels[setLevel];
-                this.props.didWin(null, setLevel);
-            }
-        }
         let shuffleColors = gamehelpers.fisherYates(colors);
-        this.setState = ({
-            colors: shuffleColors
-        });
+        let level = gamehelpers.createLevel(game.level);
+
+        console.log(level);
 
         // reset game state
         this.props.updateClicks(0);
+
+        if (startover === true) {
+            level = gamehelpers.createLevel(0);
+            this.props.didWin(null);
+            this.props.updateLevel(0);
+        } else {
+            this.props.didWin(null);
+        }
+
+        this.setState = ({
+            colors: shuffleColors,
+            level: level
+        });
 
         let grid = gamehelpers.populateGrid(level.numberofrows, level.numberofcolors);
 
@@ -51,13 +50,13 @@ class App extends Component {
     }
     render() {
         const { game } = this.props;
-        const level = levels[game.level];
+        const level = this.state.level;
         let baseColor = this.state.colors[0];
         return (
             <div className={"content " + baseColor}>
             <div className="header">
-              <h1>Color Flood <i className="triggerInfo">?</i></h1>
               <Logo />
+              <h1>Color Flood <i className="triggerInfo">?</i></h1>
               <div className="count">Moves Left: <span>{level.maxclick - game.clicks}</span></div>
             </div>            
             <Board
@@ -65,6 +64,7 @@ class App extends Component {
                 grid={game.grid} 
                 game={game} 
                 updateClicks={this.props.updateClicks} 
+                updateLevel={this.props.updateLevel}
                 createGrid={this.props.createGrid}
                 loadBlocks={this.props.loadBlocks}
                 didWin={this.props.didWin}
@@ -78,7 +78,7 @@ class App extends Component {
                 />
             <div className="header">
               <small className="instructions">Click the dots to change their colors. Your goal is to make them all match the background.</small>            
-              <div className="newgame" onClick={(e) => this.restart()}>New Game</div>
+              <div className="newgame" onClick={(e) => this.restart(true)}>New Game</div>
             </div>
           </div>
         );
@@ -96,7 +96,8 @@ function mapDispatchToProps(dispatch) {
         updateClicks: gameActions.updateClicks,
         createGrid: gameActions.createGrid,
         loadBlocks: gameActions.loadBlocks,
-        didWin: gameActions.didWin
+        didWin: gameActions.didWin,
+        updateLevel: gameActions.updateLevel
     }, dispatch);
 }
 

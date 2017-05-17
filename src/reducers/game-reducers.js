@@ -28,9 +28,13 @@ export default function GameReducer(state = initialState, action = {}) {
         case types.HASWON:
             return {
                 ...state,
-                hasWon: action.won,
+                hasWon: action.won
+            };
+        case types.LEVEL:
+            return {
+                ...state,
                 level: action.level
-            };                                    
+            };                                                
         default:
             return state;
     }

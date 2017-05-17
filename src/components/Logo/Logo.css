@@ -1,9 +1,10 @@
 svg {
   background-color: white;
   border: 2px solid #FF5A5A;
-  height: 48px;
+  height: 32px;
+  margin-top: 10px;
   padding: 2px;
-  width: 48px;
+  width: 32px;
   transform: scaleX(-1);
 }
 

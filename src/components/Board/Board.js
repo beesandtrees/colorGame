@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import Block from '../Block/Block.js';
 
-import * as gamehelpers from '../Logic/grid.js';
+import * as gamehelpers from '../../helpers/helpers.js';
 import './Board.css';
 
 export default class Board extends Component {
@@ -140,9 +140,10 @@ export default class Board extends Component {
         // update redux state of hasWon
         if (win) {
             let upperLevel = this.props.game.level + 1;
-            this.props.didWin(true, upperLevel);
+            this.props.didWin(true)
+            this.props.updateLevel(upperLevel);
         } else if (this.props.game.clicks >= this.props.maxclick) {
-            this.props.didWin(false, this.props.game.level);
+            this.props.didWin(false);
         }
     }
 
