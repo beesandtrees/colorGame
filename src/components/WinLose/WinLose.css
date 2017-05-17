@@ -1,15 +1,12 @@
 .winlose {
   align-items: center;
-  background: white;
-  border: 6px solid #3DBFCE;
-  border-radius: 20px;
   color: #333;
   display: flex;
   flex-direction: column;
   font-size: 42px;
   height: 260px;
   justify-content: center;
-  left: calc(50% - 138px);
+  left: calc(50% - 126px);
   position: fixed;
   text-align: center;
   top: 205px;

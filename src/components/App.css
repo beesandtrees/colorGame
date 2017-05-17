@@ -55,8 +55,8 @@ h1 {
 }
 
 .pink {
-  background-color: hsl(307, 100%, 83%);
-  border-color: hsl(307, 100%, 90%);
+  background-color: hsl(307, 100%, 85%);
+  border-color: hsl(307, 100%, 92%);
 }
 
 .red {
@@ -75,22 +75,22 @@ h1 {
 }
 
 .aqua {
-  background-color: #3DBFCE;
-  border-color: hsl(186, 60%, 73%);
+  background-color: hsl(186, 77%, 58%);
+  border-color: hsl(186, 77%, 82%);
 }
 
 .blue {
-  background-color: hsl(223, 100%, 75%);
-  border-color: hsl(223, 100%, 83%);
+  background-color: hsl(210, 100%, 71%);
+  border-color: hsl(210, 100%, 84%);
 }
 
 .dblue {
-  background-color: hsl(238, 67%, 56%);
-  border-color: hsl(238, 100%, 79%);
+  background-color: hsl(224, 100%, 63%);
+  border-color: hsl(224, 100%, 80%);
 }
 
 .purple {
-  background-color: #7f4af1;
+  background-color: hsl(259, 71%, 53%);
   border-color: hsl(253, 100%, 76%);
 }
 

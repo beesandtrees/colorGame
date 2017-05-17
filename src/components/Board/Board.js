@@ -1,19 +1,10 @@
 import React, { Component } from 'react';
 import Block from '../Block/Block.js';
-import { colors } from '../Logic/helpers.js';
 
 import * as gamehelpers from '../Logic/grid.js';
 import './Board.css';
 
 export default class Board extends Component {
-    constructor(props) {
-        super(props);
-        let shuffleColors = gamehelpers.fisherYates(colors);
-        this.state = {
-            colors: shuffleColors
-        };        
-    }
-
     componentDidMount() {
         let grid = this.loadGrid(this.props.numberofrows, this.props.numberofcolors);
         this.renderBlocks(grid, this.props.numberofrows);
@@ -62,7 +53,7 @@ export default class Board extends Component {
                 // get the number from the current grid block                
                 let c = grid[i][j][0];
                 let active = grid[i][j][1];
-                let backgroundColor = this.state.colors[c];
+                let backgroundColor = this.props.colors[c];
 
                 // assign a dom element to a slot in the box grid
                 blocks.push(<Block 

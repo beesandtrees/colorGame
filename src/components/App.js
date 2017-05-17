@@ -4,6 +4,7 @@ import { bindActionCreators } from 'redux';
 import * as gameActions from '../actions';
 
 import { levels } from './Logic/levels.js';
+import { colors } from './Logic/helpers.js';
 import * as gamehelpers from './Logic/grid.js';
 
 import Logo from './Logo/Logo.js';
@@ -13,6 +14,13 @@ import WinLose from './WinLose/WinLose.js';
 import './App.css';
 
 class App extends Component {
+    constructor(props) {
+        super(props);
+        let shuffleColors = gamehelpers.fisherYates(colors);
+        this.state = {
+            colors: shuffleColors
+        };
+    }
     restart(startover) {
         const { game } = this.props;
         let level = levels[game.level];
@@ -29,8 +37,11 @@ class App extends Component {
                 this.props.didWin(null, setLevel);
             }
         }
+        let shuffleColors = gamehelpers.fisherYates(colors);
+        this.setState = ({
+            colors: shuffleColors
+        });
 
-        console.log(level);
         // reset game state
         this.props.updateClicks(0);
 
@@ -41,14 +52,16 @@ class App extends Component {
     render() {
         const { game } = this.props;
         const level = levels[game.level];
+        let baseColor = this.state.colors[0];
         return (
-            <div className="content">
+            <div className={"content " + baseColor}>
             <div className="header">
               <h1>Color Flood <i className="triggerInfo">?</i></h1>
               <Logo />
               <div className="count">Moves Left: <span>{level.maxclick - game.clicks}</span></div>
             </div>            
             <Board
+                colors={this.state.colors}
                 grid={game.grid} 
                 game={game} 
                 updateClicks={this.props.updateClicks} 
