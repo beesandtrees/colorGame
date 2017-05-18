@@ -12,8 +12,7 @@ export const colors = [
     'red',
     'aqua',
     'lime',
+    'green',
     'orange',
-    'blue',
-    'dblue',
-    'purple'
+    'blue'
 ];

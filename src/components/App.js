@@ -34,6 +34,7 @@ class App extends Component {
       colors: shuffleColors,
       level: gamehelpers.createLevel(this.props.game.level)
     };
+    this.showInfo = this.showInfo.bind(this);
   }
   restart(startover) {
     const { game } = this.props;
@@ -50,6 +51,8 @@ class App extends Component {
     } else {
       this.props.didWin(null);
     }
+
+    console.log(level);
 
     this.setState = ({
       colors: shuffleColors,
