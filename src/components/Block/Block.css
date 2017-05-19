@@ -7,9 +7,9 @@
   transition: all 0.33s;
 }
 
-.block.true {
+/*.block.true {
   border-color: white;
-}
+}*/
 
 .block-3 {
   width: 33.33%;

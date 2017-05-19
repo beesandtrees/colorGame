@@ -89,6 +89,19 @@
   width: 100vw;
 }
 
+.newgame {
+  background-color: white;
+  color: #212121;
+  white-space: nowrap;
+  margin-right: 10px;
+  padding: 5px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin: 1.6rem auto;
+  width: 100px;
+  text-align: center;
+}
+
 .grape {
   background-color: #5F35B8;
   border-color: #997DFF;
@@ -132,17 +145,4 @@
 .blue {
   background-color: #3771FF;
   border-color: #5ABAFF;
-}
-
-.newgame {
-  background-color: white;
-  color: #212121;
-  white-space: nowrap;
-  margin-right: 10px;
-  padding: 5px;
-  border-radius: 4px;
-  cursor: pointer;
-  margin: 1.6rem auto;
-  width: 100px;
-  text-align: center;
 }

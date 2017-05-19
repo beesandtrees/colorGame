@@ -34,7 +34,6 @@ class App extends Component {
       colors: shuffleColors,
       level: gamehelpers.createLevel(this.props.game.level)
     };
-    this.showInfo = this.showInfo.bind(this);
   }
   restart(startover) {
     const { game } = this.props;
@@ -52,9 +51,7 @@ class App extends Component {
       this.props.didWin(null);
     }
 
-    console.log(level);
-
-    this.setState = ({
+    this.setState({
       colors: shuffleColors,
       level: level
     });
@@ -63,8 +60,8 @@ class App extends Component {
 
     this.props.createGrid(grid);
   }
-  showInfo() {
-    this.setState({ showInfo: !this.state.showInfo });
+  showInfo(tf) {
+    this.setState({ showInfo: tf });
   }
   render() {
     const { game } = this.props;
@@ -72,37 +69,37 @@ class App extends Component {
     let baseColor = this.state.colors[0];
     return (
       <div className={"content " + baseColor}>
-            <div className="header">
-              <Logo />
-              <div className="h1">Color Flood 
-                <div onClick={()=>this.showInfo()}>
-                    <Info show={this.state.showInfo} />
-                </div>
-              </div>
-              <div className="count">Moves Left: <span>{level.maxclick - game.clicks}</span></div>
-            </div>            
-            <Board
-                colors={this.state.colors}
-                goalColor={baseColor}
-                grid={game.grid} 
-                game={game} 
-                updateClicks={this.props.updateClicks} 
-                updateLevel={this.props.updateLevel}
-                createGrid={this.props.createGrid}
-                loadBlocks={this.props.loadBlocks}
-                didWin={this.props.didWin}
-                numberofrows={level.numberofrows}
-                numberofcolors={level.numberofcolors}
-                maxclick={level.maxclick}
-                />
-            <WinLose 
-                won={game.hasWon}
-                restart={(startover)=>this.restart(startover)}
-                />
-            <div className="header">
-              <div className="newgame" onClick={(e) => this.restart(true)}>New Game</div>
+        <div className="header">
+          <Logo />
+          <div className="h1">Color Flood 
+            <div onClick={(tf)=>this.showInfo(!this.state.showInfo)}>
+                <Info show={this.state.showInfo} />
             </div>
           </div>
+          <div className="count">Moves Left: <span>{level.maxclick - game.clicks}</span></div>
+        </div>            
+        <Board
+            colors={this.state.colors}
+            goalColor={baseColor}
+            grid={game.grid} 
+            game={game} 
+            updateClicks={this.props.updateClicks} 
+            updateLevel={this.props.updateLevel}
+            createGrid={this.props.createGrid}
+            loadBlocks={this.props.loadBlocks}
+            didWin={this.props.didWin}
+            numberofrows={level.numberofrows}
+            numberofcolors={level.numberofcolors}
+            maxclick={level.maxclick}
+            />
+        <WinLose 
+            won={game.hasWon}
+            restart={(startover)=>this.restart(startover)}
+            />
+        <div className="header">
+          <div className="newgame" onClick={(e) => this.restart(true)}>New Game</div>
+        </div>
+      </div>
     );
   }
 }

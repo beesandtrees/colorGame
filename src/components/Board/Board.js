@@ -146,11 +146,13 @@ export default class Board extends Component {
     }
 
     // update redux state of hasWon
-    if (win) {
+    if (win === true) {
       let upperLevel = this.props.game.level + 1;
       this.props.didWin(win)
       this.props.updateLevel(upperLevel);
-    } else if (this.props.game.clicks >= this.props.maxclick) {
+    } else if (win === 'almost') {
+      this.props.didWin(win)
+    } else if(this.props.game.clicks >= this.props.maxclick) {
       this.props.didWin(false);
     }
   }
