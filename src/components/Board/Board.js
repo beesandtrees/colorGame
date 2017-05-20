@@ -7,12 +7,12 @@ import './Board.css';
 export default class Board extends Component {
   componentDidMount() {
     let grid = this.loadGrid(this.props.numberofrows, this.props.numberofcolors);
-    this.renderBlocks(grid, this.props.numberofrows, this.props.goalColor);
+    this.renderBlocks(grid, this.props.numberofrows, this.props.goalColor, this.props.colors);
   }
 
   componentWillReceiveProps(nextProps) {
     if (this.props.grid !== nextProps.grid) {
-      this.renderBlocks(nextProps.grid, nextProps.numberofrows, nextProps.goalColor);
+      this.renderBlocks(nextProps.grid, nextProps.numberofrows, nextProps.goalColor, nextProps.colors);
     }
   }
 
@@ -44,7 +44,7 @@ export default class Board extends Component {
     return grid;
   }
 
-  renderBlocks(grid, rows, goalColor) {
+  renderBlocks(grid, rows, goalColor, colors) {
 
     let blocks = [];
 
@@ -56,7 +56,7 @@ export default class Board extends Component {
         let c = grid[i][j][0];
         let active = grid[i][j][1];
 
-        let backgroundColor = this.props.colors[c];
+        let backgroundColor = colors[c];
 
         // assign a dom element to a slot in the box grid
         blocks.push(<Block 
@@ -66,7 +66,7 @@ export default class Board extends Component {
                 ycoord={j} 
                 cols={rows}
                 active={active}
-                backgroundColor={backgroundColor} />);
+                color={backgroundColor} />);
       }
     }
 
@@ -111,7 +111,7 @@ export default class Board extends Component {
     if (newjob.length > 0) {
       setTimeout(function() {
         _this.paint(newjob, oldcolor, newcolor);
-        _this.renderBlocks(grid, _this.props.numberofrows, _this.props.goalColor);
+        _this.renderBlocks(grid, _this.props.numberofrows, _this.props.goalColor, _this.props.colors);
       }, 45);
     } else {
       // check if they've won

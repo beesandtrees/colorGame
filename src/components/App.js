@@ -3,7 +3,7 @@ import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
 import * as gameActions from '../actions';
 
-import { colors } from '../helpers/constants.js';
+import { colorArrays } from '../helpers/constants.js';
 import * as gamehelpers from '../helpers/helpers.js';
 
 import Logo from './Logo/Logo.js';
@@ -28,7 +28,9 @@ class Info extends Component {
 class App extends Component {
   constructor(props) {
     super(props);
-    let shuffleColors = gamehelpers.fisherYates(colors);
+    let gameLevel = Math.ceil((this.props.game.level+1)/8)%4;
+    console.log(gameLevel);
+    let shuffleColors = gamehelpers.fisherYates(colorArrays[gameLevel]);
     this.state = {
       showInfo: false,
       colors: shuffleColors,
@@ -37,7 +39,8 @@ class App extends Component {
   }
   restart(startover) {
     const { game } = this.props;
-    let shuffleColors = gamehelpers.fisherYates(colors);
+    let gameLevel = Math.ceil((game.level+1)/8)%4;
+    let shuffleColors = gamehelpers.fisherYates(colorArrays[gameLevel]);
     let level = gamehelpers.createLevel(game.level);
 
     // reset game state
@@ -66,9 +69,11 @@ class App extends Component {
   render() {
     const { game } = this.props;
     const level = this.state.level;
-    let baseColor = this.state.colors[0];
+    const transition = game.level <= 23 ? true : false;
+    let baseColor = this.state.colors[0]["background-color"];
     return (
-      <div className={"content " + baseColor}>
+      <div className={"content transition-" + transition}
+            style={{backgroundColor: baseColor}}>
         <div className="header">
           <Logo />
           <div className="h1">Color Flood 

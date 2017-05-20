@@ -4,31 +4,10 @@
   border-width: 6px;
   box-sizing: border-box;
   cursor: pointer;
-  transition: all 0.33s;
 }
 
-/*.block.true {
-  border-color: white;
-}*/
-
-.block-3 {
-  width: 33.33%;
-}
-
-.block-4 {
-  width: 25%;
-}
-
-.block-5 {
-  width: 20%;
-}
-
-.block-6 {
-  width: 16.66%;
-}
-
-.block-7 {
-  width: 14.28%;
+.transition-true .block {
+  transition: all 0.33s;  
 }
 
 .block-8 {
@@ -49,6 +28,18 @@
 
 .block-12 {
   width: 8.33%;
+}
+
+.block-13 {
+  width: 7.67%;
+}
+
+.block-14 {
+  width: 7.133%;
+}
+
+.block-15 {
+  width: 6.667%;
 }
 
 .won-almost .block,
