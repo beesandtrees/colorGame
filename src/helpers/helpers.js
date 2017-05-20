@@ -31,6 +31,7 @@ export function createLevel(l) {
         max = 15 + colors;
 
     lvlobj = {
+        "colorscheme": level,
         "numberofrows": rows,
         "maxclick": max,
         "numberofcolors": colors
