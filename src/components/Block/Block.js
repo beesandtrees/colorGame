@@ -6,10 +6,10 @@ export default class Block extends Component {
     render() {
         return (
             <div 
-            	className={"block block-" + this.props.cols + " " + this.props.active} 
+            	className={"block block-" + this.props.cols} 
             	style={{
-	            	backgroundColor: this.props.color["background-color"], 
-	            	borderColor: this.props.color["border-color"]
+	            	backgroundColor: this.props.bgcolor, 
+	            	borderColor: this.props.border
 	            }}
             	onClick={(x,y)=>this.props.clickbox(this.props.xcoord, this.props.ycoord)}>
             </div>

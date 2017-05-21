@@ -29,7 +29,6 @@ class App extends Component {
   constructor(props) {
     super(props);
     let gameLevel = Math.ceil((this.props.game.level+1)/8)%4;
-    console.log(gameLevel);
     let shuffleColors = gamehelpers.fisherYates(colorArrays[gameLevel]);
     this.state = {
       showInfo: false,
