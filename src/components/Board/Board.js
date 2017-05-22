@@ -54,7 +54,7 @@ export default class Board extends Component {
 
     clickbox(x, y) {
         // new array with 0,0 x,y coords
-        let job = ["00"];
+        let job = ["0 0"];
 
         // topcorner is the first number in the grid
         let topcorner = this.props.game.grid[0][0][0];
@@ -82,13 +82,11 @@ export default class Board extends Component {
             grid = _props.game.grid.slice(0),
             loops = job.length;
 
-
         for (var x = 0; x < loops; x++) {
 
-            let rowCol = job.shift();
-            let row = parseInt(rowCol.substring(0, 1));
-            let col = parseInt(rowCol.substring(1, 2));
-
+            let rowCol = job.shift().split(" ");
+            let row = parseInt(rowCol[0], 10);
+            let col = parseInt(rowCol[1], 10);
 
             if (grid[row][col][0] === clickedColor || grid[row][col][0] === topcorner) {
 
@@ -102,8 +100,8 @@ export default class Board extends Component {
                 if (row < (numrows - 1)) {
                     if ((bottom[0] === topcorner && bottom[1] === true) ||
                         (bottom[0] === clickedColor && bottom[1] === false)) {
-                        if (newjob.indexOf((row + 1) + "" + col) === -1) {
-                            newjob.push((row + 1) + "" + col);
+                        if (newjob.indexOf((row + 1) + " " + col) === -1) {
+                            newjob.push((row + 1) + " " + col);
                         }
                     }
                 }
@@ -111,8 +109,8 @@ export default class Board extends Component {
                 if (col < (numrows - 1)) {
                     if ((right[0] === topcorner && right[1] === true) ||
                         (right[0] === clickedColor && right[1] === false)) {
-                        if (newjob.indexOf(row + "" + (col + 1)) === -1) {
-                            newjob.push(row + "" + (col + 1));
+                        if (newjob.indexOf(row + " " + (col + 1)) === -1) {
+                            newjob.push(row + " " + (col + 1));
                         }
                     }
                 }
@@ -120,8 +118,8 @@ export default class Board extends Component {
                 if (row > 0) {
                     if ((top[0] === topcorner && top[1] === true) ||
                         (top[0] === clickedColor && top[1] === false)) {
-                        if (newjob.indexOf((row - 1) + "" + col) === -1) {
-                            newjob.push((row - 1) + "" + col);
+                        if (newjob.indexOf((row - 1) + " " + col) === -1) {
+                            newjob.push((row - 1) + " " + col);
                         }
                     }
                 }
@@ -129,8 +127,8 @@ export default class Board extends Component {
                 if (col > 0) {
                     if ((left[0] === topcorner && left[1] === true) ||
                         (left[0] === clickedColor && left[1] === false)) {
-                        if (newjob.indexOf(row + "" + (col - 1)) === -1) {
-                            newjob.push(row + "" + (col - 1));
+                        if (newjob.indexOf(row + " " + (col - 1)) === -1) {
+                            newjob.push(row + " " + (col - 1));
                         }
                     }
                 }

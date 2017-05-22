@@ -28,7 +28,7 @@ class Info extends Component {
 class App extends Component {
   constructor(props) {
     super(props);
-    let gameLevel = Math.ceil((this.props.game.level+1)/8)%4;
+    let gameLevel = Math.ceil((this.props.game.level+1)/8)%5;
     let shuffleColors = gamehelpers.fisherYates(colorArrays[gameLevel]);
     this.state = {
       showInfo: false,
@@ -38,7 +38,7 @@ class App extends Component {
   }
   restart(startover) {
     const { game } = this.props;
-    let gameLevel = Math.ceil((game.level+1)/8)%4;
+    let gameLevel = Math.ceil((game.level+1)/8)%5;
     let shuffleColors = gamehelpers.fisherYates(colorArrays[gameLevel]);
     let level = gamehelpers.createLevel(game.level);
 
