@@ -5,7 +5,7 @@ import * as gamehelpers from '../../helpers/helpers.js';
 import './Board.css';
 
 export default class Board extends Component {
-    componentDidMount() {
+    componentDidMount() {        
         let grid = this.loadGrid(this.props.numberofrows, this.props.numberofcolors);
         this.renderBlocks(grid, this.props.numberofrows, this.props.goalColor, this.props.colors);
     }
@@ -71,99 +71,24 @@ export default class Board extends Component {
         this.props.updateClicks(clicks);
 
         // and repaint the grid
-        this.paint(job, topcorner, clickedColor);
+        gamehelpers.setActive(job, topcorner, clickedColor, this.props, this.props.numberofrows, this.checkForWin);
     }
 
-    paint(job, topcorner, clickedColor) {
-        let _this = this,
-            _props = this.props,
-            numrows = this.props.numberofrows,
-            newjob = [],
-            grid = _props.game.grid.slice(0),
-            loops = job.length;
-
-        for (var x = 0; x < loops; x++) {
-
-            let rowCol = job.shift().split(" ");
-            let row = parseInt(rowCol[0], 10);
-            let col = parseInt(rowCol[1], 10);
-
-            if (grid[row][col][0] === clickedColor || grid[row][col][0] === topcorner) {
-
-                grid[row][col] = [clickedColor, true];
-
-                let bottom = row < (numrows - 1) ? grid[row + 1][col] : [];
-                let right = col < (numrows - 1) ? grid[row][col + 1] : [];
-                let top = row > 0 ? grid[row - 1][col] : [];
-                let left = col > 0 ? grid[row][col - 1] : [];
-
-                if (row < (numrows - 1)) {
-                    if ((bottom[0] === topcorner && bottom[1] === true) ||
-                        (bottom[0] === clickedColor && bottom[1] === false)) {
-                        if (newjob.indexOf((row + 1) + " " + col) === -1) {
-                            newjob.push((row + 1) + " " + col);
-                        }
-                    }
-                }
-
-                if (col < (numrows - 1)) {
-                    if ((right[0] === topcorner && right[1] === true) ||
-                        (right[0] === clickedColor && right[1] === false)) {
-                        if (newjob.indexOf(row + " " + (col + 1)) === -1) {
-                            newjob.push(row + " " + (col + 1));
-                        }
-                    }
-                }
-
-                if (row > 0) {
-                    if ((top[0] === topcorner && top[1] === true) ||
-                        (top[0] === clickedColor && top[1] === false)) {
-                        if (newjob.indexOf((row - 1) + " " + col) === -1) {
-                            newjob.push((row - 1) + " " + col);
-                        }
-                    }
-                }
-
-                if (col > 0) {
-                    if ((left[0] === topcorner && left[1] === true) ||
-                        (left[0] === clickedColor && left[1] === false)) {
-                        if (newjob.indexOf(row + " " + (col - 1)) === -1) {
-                            newjob.push(row + " " + (col - 1));
-                        }
-                    }
-                }
-            }
-        }
-
-        // update grid state
-        _props.createGrid(grid);
-
-        if (newjob.length > 0) {
-            setTimeout(function() {
-                _this.paint(newjob, topcorner, clickedColor);
-                _this.renderBlocks(grid, _props.numberofrows, _props.goalColor, _props.colors);
-            }, 30);
-        } else {
-            // check if they've won
-            _this.checkForWin();
-        }
-    }
-
-    checkForWin() {
-        var c = this.props.grid[0][0][0],
-            finalColor = this.props.colors[c],
-            goal = this.props.colors[0];
+    checkForWin(_props) {
+        var c = _props.grid[0][0][0],
+            finalColor = _props.colors[c],
+            goal = _props.colors[0];
 
         // if number of clicks is less than or equal to maxclick win will be set to true
-        var win = (this.props.game.clicks <= this.props.maxclick);
+        var win = (_props.game.clicks < _props.maxclick);
 
         // this checks to see if all of the boxes are the same color
         // as soon as it reachesa box that is a different color from the top left corner 
         // it breaks out of the loop
         if (win) {
-            for (var i = 0; i < this.props.numberofrows; i++) {
-                for (var j = 0; j < this.props.numberofrows; j++) {
-                    if (this.props.grid[i][j][0] !== c) {
+            for (var i = 0; i < _props.numberofrows; i++) {
+                for (var j = 0; j < _props.numberofrows; j++) {
+                    if (_props.grid[i][j][0] !== c) {
                         win = false;
                         break;
                     }
@@ -177,13 +102,13 @@ export default class Board extends Component {
 
         // update redux state of hasWon
         if (win === true) {
-            let upperLevel = this.props.game.level + 1;
-            this.props.didWin(win)
-            this.props.updateLevel(upperLevel);
+            let upperLevel = _props.game.level + 1;
+            _props.didWin(win)
+            _props.updateLevel(upperLevel);
         } else if (win === 'almost') {
-            this.props.didWin(win)
-        } else if (this.props.game.clicks >= this.props.maxclick) {
-            this.props.didWin(false);
+            _props.didWin(win)
+        } else if (_props.game.clicks >= _props.maxclick) {
+            _props.didWin(false);
         }
     }
 
