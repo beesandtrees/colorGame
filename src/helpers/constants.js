@@ -92,19 +92,19 @@ export const colorArrays = {
         "background-color": "#9CA503",
         "border-color": "#D7ED7F"
     }, {
-        "background-color": "#61A554",
-        "border-color": "#AFE0A6"
+        "background-color": "#57bf43",
+        "border-color": "#b1efa6"
     }, {
         "background-color": "#238C80",
         "border-color": "#83E2D7"
     }, {
-        "background-color": "#006FA4",
+        "background-color": "#1599d8",
         "border-color": "#54CFFF"
     }, {
         "background-color": "#4101C8",
         "border-color": "#6990FF"
     }, {
-        "background-color": "#7100AC",
+        "background-color": "#8631b3",
         "border-color": "#B861E4"
     }],
     "4": [{

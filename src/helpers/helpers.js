@@ -131,10 +131,10 @@ export function setActive(job, topcorner, clickedColor, _props, numrows, checkWi
     _props.createGrid(grid);
 
     // if there are dots that need to be updated run again
-    if (newjob.length > 0) {
+    if (newjob.length > 0 && newjob !== []) {
         setTimeout(function() {
             setActive(newjob, topcorner, clickedColor, _props, numrows, checkWin);
-        }, 30);
+        }, 45);
         // if there aren't then check for a win
     } else {
         checkWin(_props);

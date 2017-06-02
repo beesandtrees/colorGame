@@ -5,7 +5,7 @@ import * as gamehelpers from '../../helpers/helpers.js';
 import './Board.css';
 
 export default class Board extends Component {
-    componentDidMount() {        
+    componentDidMount() {
         let grid = this.loadGrid(this.props.numberofrows, this.props.numberofcolors);
         this.renderBlocks(grid, this.props.numberofrows, this.props.goalColor, this.props.colors);
     }
@@ -35,7 +35,11 @@ export default class Board extends Component {
                 let active = grid[i][j][1];
 
                 let backgroundColor = colors[c]["background-color"];
-                let border = active ? "white" : colors[c]["border-color"];
+                let borderColor = active ? "white" : colors[c]["border-color"];
+
+                if (this.props.game.level > 56) {
+                    borderColor = active ? "white" : colors[gamehelpers.rand(colors.length)]["border-color"];
+                }
 
                 // assign a dom element to a slot in the box grid
                 blocks.push(<Block 
@@ -45,7 +49,7 @@ export default class Board extends Component {
                 ycoord={j} 
                 cols={rows}
                 bgcolor={backgroundColor}
-                border={border} />);
+                border={borderColor} />);
             }
         }
 
@@ -80,7 +84,7 @@ export default class Board extends Component {
             goal = _props.colors[0];
 
         // if number of clicks is less than or equal to maxclick win will be set to true
-        var win = (_props.game.clicks < _props.maxclick);
+        var win = (_props.game.clicks <= _props.maxclick);
 
         // this checks to see if all of the boxes are the same color
         // as soon as it reachesa box that is a different color from the top left corner 
@@ -107,7 +111,7 @@ export default class Board extends Component {
             _props.updateLevel(upperLevel);
         } else if (win === 'almost') {
             _props.didWin(win)
-        } else if (_props.game.clicks >= _props.maxclick) {
+        } else if (_props.game.clicks >= _props.maxclick - 1) {
             _props.didWin(false);
         }
     }

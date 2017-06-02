@@ -4,10 +4,11 @@
   border-width: 6px;
   box-sizing: border-box;
   cursor: pointer;
+  transition: background-color 0.1s, border-radius 0.33s;
 }
 
 .transition-true .block {
-  transition: all 0.33s;  
+  transition: all 0.33s;
 }
 
 .block-8 {
@@ -51,6 +52,6 @@
 .won-almost .block,
 .won-true .block,
 .won-false .block {
-    border: 0;
-    border-radius: 0;
+  border: 0;
+  border-radius: 0;
 }

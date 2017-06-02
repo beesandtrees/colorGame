@@ -2,7 +2,7 @@ import * as types from "../actions/types";
 
 const initialState = {
     hasWon: null,
-    level: 0,
+    level: 4,
     clicks: 0,
     grid: [],
     blocks: []
