@@ -131,12 +131,12 @@ export const colorArrays = {
       'border-color': '#FFA7AA'
     },
     {
-      'background-color': '#2538AB',
-      'border-color': '#6877D8'
+      'background-color': '#132592',
+      'border-color': '#6072E5'
     },
     {
-      'background-color': '#446EC1',
-      'border-color': '#8CADEF'
+      'background-color': '#5491DC',
+      'border-color': '#96B6F5'
     },
     {
       'background-color': '#9AE4FF',
