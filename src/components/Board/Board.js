@@ -46,8 +46,9 @@ export default class Board extends Component {
         let c = grid[i][j][0];
         let active = grid[i][j][1];
 
-        let backgroundColor = colors[c]['background-color'];
-        let borderColor = active ? 'white' : colors[c]['border-color'];
+        // testing new impossible style
+        let backgroundColor = active ? colors[c]['background-color'] : 'gray';
+        let borderColor = active ? colors[c]['border-color'] : 'lightgray';
         //let borderRadius = !active ? '50%' : 0;
 
         if (this.props.game.level > 56) {
