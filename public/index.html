@@ -1,21 +1,63 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="shortcut icon" href="%PUBLIC_URL%/favicon.ico">
-    <!--
-      Notice the use of %PUBLIC_URL% in the tag above.
-      It will be replaced with the URL of the `public` folder during the build.
-      Only files inside the `public` folder can be referenced from the HTML.
-    -->
-    <title>React App</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <!--
-      You can add webfonts, meta tags, or analytics to this file.
-      The build step will place the bundled scripts into the <body> tag.
-    -->
-  </body>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Tell the browser it's a PWA -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <!-- Tell iOS it's a PWA -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#8D85F2">
+
+  <link rel="manifest" href="%PUBLIC_URL%/manifest.json">
+  <link rel="shortcut icon" href="%PUBLIC_URL%/favicon.ico">
+
+  <!-- reuse same icon for Safari -->
+  <link rel="apple-touch-icon" href="icon.png">
+  <link rel="icon" sizes="192x192" href="icon.png">
+  <!-- multiple icons for IE -->
+  <meta name="msapplication-square310x310logo" content="icon-310.png">
+
+  <title>React App</title>
+  <style type="text/css">
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: sans-serif;
+    }
+
+    .navbar {
+      background-color: #8D85F2;
+      text-align: center;
+    }
+
+    .navbar a {
+      display: inline-block;
+      padding: 10px;
+      color: #fff;
+      text-decoration: none;
+    }
+
+    .page-info {
+      text-align: center;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+  <noscript>
+    You need to enable JavaScript to run this app.
+  </noscript>
+  <div id="root">
+    <div class="navbar">
+      <h1>Color Flood</h1>
+    </div>
+    <p class="page-info">
+      Loading Color Flood...
+    </p>
+  </div>
+</body>
+
 </html>

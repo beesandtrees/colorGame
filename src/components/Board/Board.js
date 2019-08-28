@@ -14,8 +14,8 @@ export default class Board extends Component {
     this.renderBlocks(
       grid,
       this.props.numberofrows,
-      this.props.goalColor,
-      this.props.colors
+      this.props.colors,
+      this.props.goalColor
     );
   }
 
@@ -24,8 +24,8 @@ export default class Board extends Component {
       this.renderBlocks(
         nextProps.grid,
         nextProps.numberofrows,
-        nextProps.goalColor,
-        nextProps.colors
+        nextProps.colors,
+        nextProps.goalColor
       );
     }
   }
@@ -36,26 +36,22 @@ export default class Board extends Component {
     return grid;
   }
 
-  renderBlocks(grid, rows, goalColor, colors) {
+  renderBlocks(grid, rows, colors, goalColor) {
     let blocks = [];
-
     // create the grid array
     for (let i = 0; i < rows; i++) {
       for (let j = 0; j < rows; j++) {
         // get the number from the current grid block
-        let c = grid[i][j][0];
-        let active = grid[i][j][1];
+        let c = grid[i][j].color;
+        let active = grid[i][j].active;
 
         // testing new impossible style
-        let backgroundColor = active ? colors[c]['background-color'] : 'gray';
-        let borderColor = active ? colors[c]['border-color'] : 'lightgray';
-        //let borderRadius = !active ? '50%' : 0;
+        let backgroundColor = colors[c]['background-color'];
+        let borderColor = active ? 'white' : colors[c]['border-color'];
 
-        if (this.props.game.level > 56) {
-          borderColor = active
-            ? 'white'
-            : colors[gamehelpers.rand(colors.length)]['border-color'];
-        }
+        // if (colors[c]['background-color'] === goalColor) {
+        //   borderColor = colors[c]['border-color'];
+        // }
 
         // assign a dom element to a slot in the box grid
         blocks.push(
@@ -81,10 +77,10 @@ export default class Board extends Component {
     let job = ['0 0'];
 
     // topcorner is the first number in the grid
-    let topcorner = this.props.game.grid[0][0][0];
+    let topcorner = this.props.game.grid[0][0].color;
 
     // clickedColor is the number from div you clicked
-    let clickedColor = this.props.game.grid[x][y][0];
+    let clickedColor = this.props.game.grid[x][y].color;
 
     // if you clicked on the color that's already in the corner then return
     // no loss no gain
@@ -106,7 +102,7 @@ export default class Board extends Component {
   }
 
   checkForWin(_props) {
-    var c = _props.grid[0][0][0],
+    var c = _props.grid[0][0].color,
       finalColor = _props.colors[c],
       goal = _props.colors[0];
 
@@ -119,7 +115,7 @@ export default class Board extends Component {
     if (win) {
       for (var i = 0; i < _props.numberofrows; i++) {
         for (var j = 0; j < _props.numberofrows; j++) {
-          if (_props.grid[i][j][0] !== c) {
+          if (_props.grid[i][j].color !== c) {
             win = false;
             break;
           }

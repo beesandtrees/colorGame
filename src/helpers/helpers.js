@@ -62,11 +62,15 @@ export function populateGrid(rows, colors) {
     grid[i] = [];
     for (let j = 0; j < rows; j++) {
       // get a random number between 0 and the # of available colors
-      let c = findColor(i, j, colors);
+      let color = findColor(i, j, colors);
       let active = i + j === 0 ? true : false;
 
       // assigned that number to a slot in the grid
-      grid[i][j] = [c, active];
+      grid[i][j] = {
+        color,
+        active,
+        showHint: false
+      };
     }
   }
 
@@ -94,21 +98,28 @@ export function setActive(
     let col = parseInt(rowCol[1], 10);
 
     // if this dot is either the old or new color continue
-    if (grid[row][col][0] === clickedColor || grid[row][col][0] === topcorner) {
+    if (
+      grid[row][col].color === clickedColor ||
+      grid[row][col].color === topcorner
+    ) {
       // they should all be the new color
-      grid[row][col] = [clickedColor, true];
+      grid[row][col] = {
+        color: clickedColor,
+        active: true,
+        showHint: true
+      };
 
       // get the coords of the surrounding dots
-      let bottom = row < numrows - 1 ? grid[row + 1][col] : [];
-      let right = col < numrows - 1 ? grid[row][col + 1] : [];
-      let top = row > 0 ? grid[row - 1][col] : [];
-      let left = col > 0 ? grid[row][col - 1] : [];
+      let bottom = row < numrows - 1 ? grid[row + 1][col] : null;
+      let right = col < numrows - 1 ? grid[row][col + 1] : null;
+      let top = row > 0 ? grid[row - 1][col] : null;
+      let left = col > 0 ? grid[row][col - 1] : null;
 
       // check each surrounding dot to see if it needs to be updated
       if (row < numrows - 1) {
         if (
-          (bottom[0] === topcorner && bottom[1] === true) ||
-          (bottom[0] === clickedColor && bottom[1] === false)
+          (bottom.color === topcorner && bottom.active === true) ||
+          (bottom.color === clickedColor && bottom.active === false)
         ) {
           if (newjob.indexOf(row + 1 + ' ' + col) === -1) {
             newjob.push(row + 1 + ' ' + col);
@@ -118,8 +129,8 @@ export function setActive(
 
       if (col < numrows - 1) {
         if (
-          (right[0] === topcorner && right[1] === true) ||
-          (right[0] === clickedColor && right[1] === false)
+          (right.color === topcorner && right.active === true) ||
+          (right.color === clickedColor && right.active === false)
         ) {
           if (newjob.indexOf(row + ' ' + (col + 1)) === -1) {
             newjob.push(row + ' ' + (col + 1));
@@ -129,8 +140,8 @@ export function setActive(
 
       if (row > 0) {
         if (
-          (top[0] === topcorner && top[1] === true) ||
-          (top[0] === clickedColor && top[1] === false)
+          (top.color === topcorner && top.active === true) ||
+          (top.color === clickedColor && top.active === false)
         ) {
           if (newjob.indexOf(row - 1 + ' ' + col) === -1) {
             newjob.push(row - 1 + ' ' + col);
@@ -140,8 +151,8 @@ export function setActive(
 
       if (col > 0) {
         if (
-          (left[0] === topcorner && left[1] === true) ||
-          (left[0] === clickedColor && left[1] === false)
+          (left.color === topcorner && left.active === true) ||
+          (left.color === clickedColor && left.active === false)
         ) {
           if (newjob.indexOf(row + ' ' + (col - 1)) === -1) {
             newjob.push(row + ' ' + (col - 1));
