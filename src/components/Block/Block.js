@@ -1,20 +1,18 @@
-import React, { Component } from 'react';
+import React from 'react';
 
 import './Block.css';
 
-export default class Block extends Component {
-  render() {
-    return (
-      <div
-        className={'block block-' + this.props.cols}
-        style={{
-          backgroundColor: this.props.bgcolor,
-          borderColor: this.props.border
-        }}
-        onClick={(x, y) =>
-          this.props.clickbox(this.props.xcoord, this.props.ycoord)
-        }
-      />
-    );
-  }
-}
+const Block = props => {
+  return (
+    <div
+      className={'block block-' + props.cols}
+      style={{
+        backgroundColor: props.bgcolor,
+        borderColor: props.border
+      }}
+      onClick={(x, y) => props.clickbox(props.xcoord, props.ycoord)}
+    />
+  );
+};
+
+export default Block;
