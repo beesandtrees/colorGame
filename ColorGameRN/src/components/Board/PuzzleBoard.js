@@ -14,7 +14,9 @@ export default class PuzzleBoard extends Component {
       moves: 0,
       gameOver: false,
       animationPhase: 'idle',
-      cascadeCount: 0
+      cascadeCount: 0,
+      matchesMade: 0,
+      levelCompleted: false
     };
   }
   
@@ -32,8 +34,16 @@ export default class PuzzleBoard extends Component {
       gameOver: false,
       potentialMatches: [], // Add this to track potential matches
       animationPhase: 'idle', // Track current animation phase
-      cascadeCount: 0 // Reset cascade counter
+      cascadeCount: 0, // Reset cascade counter
+      matchesMade: 0, // Reset match counter for level progression
+      levelCompleted: false // Reset level completion flag
     });
+    
+    // Reset matchesMade in Redux (with null check)
+    if (this.props.updateMatchesMade) {
+      console.log("Resetting match counter to 0");
+      this.props.updateMatchesMade(0);
+    }
     
     this.firstSelectedBlock = null;
     
@@ -71,12 +81,21 @@ export default class PuzzleBoard extends Component {
   }
   
   UNSAFE_componentWillReceiveProps(nextProps) {
+    // If the grid changes, re-render blocks
     if (this.props.grid !== nextProps.grid) {
       this.renderBlocks(
         nextProps.grid,
         nextProps.numberofrows,
         nextProps.colors
       );
+    }
+    
+    // If the level changes, reinitialize the game
+    if (this.props.game.level !== nextProps.game.level) {
+      console.log(`Level changed from ${this.props.game.level} to ${nextProps.game.level}, reinitializing game`);
+      setTimeout(() => {
+        this.initializeGame();
+      }, 300);
     }
     
     // TEMPORARILY DISABLE AUTOMATIC REINITIALIZING FOR DEBUGGING
@@ -180,11 +199,26 @@ export default class PuzzleBoard extends Component {
     if (matches.length > 0) {
       console.log("Processing matches - with visual steps");
       
-      // Calculate score
-      const scoreGain = puzzleHelpers.calculateScore(matches);
+      // Calculate score with level multiplier
+      const scoreGain = puzzleHelpers.calculateScore(matches, 1.0, this.props.game.level);
       const newScore = this.props.game.score + scoreGain;
-      console.log(`Score increased by ${scoreGain} to ${newScore}`);
+      console.log(`Score increased by ${scoreGain} to ${newScore} (level ${this.props.game.level})`);
       this.props.updateScore(newScore);
+      
+      // Update matchesMade counter (both in local state and Redux)
+      const newMatchesMade = this.state.matchesMade + matches.length;
+      console.log(`Before update - Local matches: ${this.state.matchesMade}, Redux matches: ${this.props.game.matchesMade}`);
+      this.setState({ matchesMade: newMatchesMade });
+      if (this.props.updateMatchesMade) {
+        console.log(`Updating Redux with ${newMatchesMade} matches`);
+        this.props.updateMatchesMade(newMatchesMade);
+      } else {
+        console.error('updateMatchesMade is undefined');
+      }
+      console.log(`Made ${matches.length} matches. Total: ${newMatchesMade}/${this.props.level.matchGoal}`);
+      
+      // We'll only check level completion after all cascades are processed
+      // So we don't do anything here
       
       // STEP 1: First highlight the matched blocks
       const highlightedGrid = JSON.parse(JSON.stringify(newGrid)); // Deep clone to avoid reference issues
@@ -296,6 +330,17 @@ export default class PuzzleBoard extends Component {
                 
                 // Process cascade matches
                 this.processCascadeMatches(finalGrid, newScore);
+              } else {
+                // No cascade matches, so we can check for level completion
+                if (this.state.matchesMade >= this.props.level.matchGoal && !this.state.levelCompleted) {
+                  console.log("No cascade matches. Checking level completion.");
+                  this.setState({ levelCompleted: true }, () => {
+                    // Wait a bit before showing completion
+                    setTimeout(() => {
+                      this.handleLevelComplete();
+                    }, styles.delayMedium);
+                  });
+                }
               }
             }, styles.delayShort);
             
@@ -324,8 +369,8 @@ export default class PuzzleBoard extends Component {
       
       // Show game over alert
       Alert.alert(
-        "Game Over",
-        `You've used all ${this.props.level.moveLimit} moves!\nFinal Score: ${this.props.game.score}`,
+        "Level Failed",
+        `You've used all ${this.props.level.moveLimit} moves!\nYou made ${this.state.matchesMade}/${this.props.level.matchGoal} matches.\nFinal Score: ${this.props.game.score}`,
         [
           { 
             text: "Try Again", 
@@ -344,6 +389,24 @@ export default class PuzzleBoard extends Component {
     }
   }
   
+  // Handle level completion 
+  handleLevelComplete() {
+    // Calculate bonus points based on remaining moves and level
+    const remainingMoves = this.props.level.moveLimit - this.state.moves;
+    const levelMultiplier = Math.pow(PUZZLE_MODE.LEVEL_SCORE_MULTIPLIER, this.props.game.level - 1);
+    const bonusPoints = Math.floor(remainingMoves * 10 * levelMultiplier); // Scaled by level
+    
+    // Update score with bonus
+    const newScore = this.props.game.score + bonusPoints;
+    this.props.updateScore(newScore);
+    
+    // Set game as won - this triggers the styled WinLose component
+    console.log(`Level complete! Bonus: ${bonusPoints} points for ${remainingMoves} remaining moves.`);
+    
+    // Mark that the player won LAST - this triggers the styled winner component
+    this.props.didWin(true);
+  }
+  
   // Simpler cascade match handler
   processCascadeMatches(grid, currentScore) {
     const numberofrows = this.props.numberofrows;
@@ -356,10 +419,18 @@ export default class PuzzleBoard extends Component {
     );
     
     if (cascadeMatches.length > 0) {
-      // Calculate score with multiplier
-      const scoreGain = puzzleHelpers.calculateScore(cascadeMatches, 1.5);
+      // Calculate score with cascade and level multipliers
+      const scoreGain = puzzleHelpers.calculateScore(cascadeMatches, 1.5, this.props.game.level);
       const newScore = currentScore + scoreGain;
       this.props.updateScore(newScore);
+      
+      // Update matchesMade counter for cascade matches too (both in local state and Redux)
+      const newMatchesMade = this.state.matchesMade + cascadeMatches.length;
+      this.setState({ matchesMade: newMatchesMade });
+      if (this.props.updateMatchesMade) {
+        this.props.updateMatchesMade(newMatchesMade);
+      }
+      console.log(`Made ${cascadeMatches.length} cascade matches. Total: ${newMatchesMade}/${this.props.level.matchGoal}`);
       
       // STEP 1: First highlight the cascade matches
       const highlightedGrid = JSON.parse(JSON.stringify(grid)); // Deep clone
@@ -452,12 +523,34 @@ export default class PuzzleBoard extends Component {
           } else {
             // Reset cascade counter
             this.setState({ cascadeCount: 0 });
+            
+            // Now that all cascade processing is done, check for level completion
+            if (this.state.matchesMade >= this.props.level.matchGoal && !this.state.levelCompleted) {
+              console.log("All cascades completed. Checking level completion.");
+              this.setState({ levelCompleted: true }, () => {
+                // Wait a bit before showing completion to allow animations to finish
+                setTimeout(() => {
+                  this.handleLevelComplete();
+                }, styles.delayMedium);
+              });
+            }
           }
         }, styles.delayMedium); // Delay before applying gravity and adding new blocks
       }, styles.delayShort); // Delay before removing matched blocks
     } else {
       // No more cascades, reset counter
       this.setState({ cascadeCount: 0 });
+      
+      // No cascades, but we still need to check for level completion
+      if (this.state.matchesMade >= this.props.level.matchGoal && !this.state.levelCompleted) {
+        console.log("No cascades. Checking level completion.");
+        this.setState({ levelCompleted: true }, () => {
+          // Wait a bit before showing completion
+          setTimeout(() => {
+            this.handleLevelComplete();
+          }, styles.delayMedium);
+        });
+      }
     }
   }
   
@@ -621,6 +714,15 @@ export default class PuzzleBoard extends Component {
       height: `${100 / rows}%`
     };
     
+    console.log(`Rendering blocks with ${rows}x${rows} grid, blockSize: ${100/rows}%`);
+    
+    // Adjust padding for larger grids
+    if (rows > 6) {
+      styles.blockContainer.padding = 1;
+    } else {
+      styles.blockContainer.padding = 2;
+    }
+    
     // Create the block components
     for (let i = 0; i < rows; i++) {
       for (let j = 0; j < rows; j++) {
@@ -677,6 +779,12 @@ export default class PuzzleBoard extends Component {
           }
         ];
         
+        // Adjust circle size for larger grids
+        let innerCircleSize = '80%';
+        if (rows > 6) {
+          innerCircleSize = '90%'; // Make inner circle larger on bigger grids to use more space
+        }
+        
         // For selected blocks, use a solid white border
         if (cell.selected) {
           outerCircleStyle.push(styles.selectedOuterCircle);
@@ -722,8 +830,8 @@ export default class PuzzleBoard extends Component {
                     backgroundColor: backgroundColor,
                     borderWidth: 0, // Explicitly prevent border
                     // For matched blocks, make inner circle fill the entire outer circle
-                    width: cell.matched ? '100%' : '80%',
-                    height: cell.matched ? '100%' : '80%',
+                    width: cell.matched ? '100%' : innerCircleSize,
+                    height: cell.matched ? '100%' : innerCircleSize,
                   }
                 ]}
               />
@@ -764,7 +872,7 @@ const styles = StyleSheet.create({
   },
   game: {
     width: '100%',
-    aspectRatio: 1,
+    aspectRatio: 1, // Maintain square aspect ratio
     flexDirection: 'row',
     flexWrap: 'wrap',
     backgroundColor: 'white',
@@ -774,6 +882,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    overflow: 'hidden', // Ensure blocks are contained within game area
   },
   gameOver: {
     opacity: 0.5,
@@ -781,8 +890,8 @@ const styles = StyleSheet.create({
   
   // Block sizing - for both filled and empty blocks
   blockSize: {
-    width: `${100 / 8}%`, // Default for 8x8, will be calculated dynamically
-    height: `${100 / 8}%`, // Default for 8x8, will be calculated dynamically
+    width: `${100 / 6}%`, // Default for 6x6, will be calculated dynamically
+    height: `${100 / 6}%`, // Default for 6x6, will be calculated dynamically
   },
   
   // Empty spaces
@@ -799,9 +908,10 @@ const styles = StyleSheet.create({
   
   // Block styling
   blockContainer: {
-    padding: 2,
+    padding: 2, // This will be dynamically adjusted based on grid size
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'visible', // Ensure we don't clip blocks
   },
   outerCircle: {
     width: '100%',
@@ -810,10 +920,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 0, // Explicitly remove any border
+    overflow: 'hidden', // Make sure content doesn't overflow
   },
   innerCircle: {
-    width: '80%',
-    height: '80%',
+    width: '80%', // Default, will be overridden dynamically
+    height: '80%', // Default, will be overridden dynamically
     borderRadius: 999,
     borderWidth: 0, // Explicitly remove any border
   },
@@ -831,6 +942,7 @@ const styles = StyleSheet.create({
     // Style for matched blocks - solid color appearance with a slightly reduced scale
     opacity: 1.0, // Full opacity
     transform: [{ scale: 0.85 }], // Slight scale down to show "disappearing" effect
+    overflow: 'hidden', // Make sure animation doesn't cause overflow
   },
   // This style is no longer used but kept for reference
   matchedOuterCircle: {

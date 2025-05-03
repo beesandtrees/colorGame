@@ -24,6 +24,15 @@ export const PUZZLE_MODE = {
   
   // Limits
   MAX_CASCADE_ITERATIONS: 3,      // Maximum number of cascade iterations
+  
+  // Level progression
+  BASE_MATCH_GOAL: 5,             // Base number of matches required to complete level 1
+  MATCHES_INCREASE_PER_LEVEL: 3,  // Additional matches required per level
+  BASE_MOVE_LIMIT: 15,            // Starting move limit for level 1
+  MOVE_INCREASE_PER_LEVEL: 5,     // Additional moves given per level
+  
+  // Scoring multipliers for higher levels
+  LEVEL_SCORE_MULTIPLIER: 1.2,    // Score multiplier per level (level 2 = 1.2x, level 3 = 1.44x, etc)
 };
 
 export const colorArrays = {

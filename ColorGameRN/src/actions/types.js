@@ -5,3 +5,4 @@ export const HASWON = 'HASWON';
 export const LEVEL = 'LEVEL';
 export const GAME_MODE = 'GAME_MODE';
 export const SCORE = 'SCORE';
+export const MATCHES_MADE = 'MATCHES_MADE';

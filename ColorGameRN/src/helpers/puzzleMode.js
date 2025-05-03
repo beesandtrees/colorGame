@@ -7,17 +7,22 @@ export function createPuzzleLevel(level) {
   level = Math.max(1, level);
   
   // Level parameters increase with difficulty
-  const baseSize = 4; // Start with 4x4 grid
+  const baseSize = 6; // Start with 6x6 grid
   const baseColors = 4; // Start with 4 colors
   
-  // Board size increases with level
-  const size = Math.min(8, baseSize + Math.floor(level / 3));
+  // Board size increases slowly with level (6x6 until level 5, then 7x7, max 8x8)
+  const size = Math.min(8, baseSize + (level >= 5 ? Math.floor((level - 4) / 3) : 0));
   
   // Number of colors increases with level
-  const colors = Math.min(6, baseColors + Math.floor(level / 4));
+  const colors = Math.min(6, baseColors + Math.floor(level / 5));
   
-  // Number of moves allowed
-  const moveLimit = Math.floor(size * size * 0.75);
+  // Number of moves allowed - based on constants
+  const moveLimit = PUZZLE_MODE.BASE_MOVE_LIMIT + (level - 1) * PUZZLE_MODE.MOVE_INCREASE_PER_LEVEL;
+  
+  // Match goal - number of matches required to advance to the next level
+  const matchGoal = PUZZLE_MODE.BASE_MATCH_GOAL + (level - 1) * PUZZLE_MODE.MATCHES_INCREASE_PER_LEVEL;
+  
+  console.log(`Level ${level} configuration: ${size}x${size} grid, ${colors} colors, ${matchGoal} matches goal, ${moveLimit} moves limit`);
   
   return {
     size,
@@ -25,25 +30,60 @@ export function createPuzzleLevel(level) {
     numberofcolors: colors,
     colorscheme: level % 5, // Cycle through color schemes
     moveLimit,
+    matchGoal, // Number of matches needed to complete this level
+    matchesMade: 0, // Track number of matches made (starts at 0)
     level
   };
 }
 
-// Generate a random Puzzle grid
+// Generate a random Puzzle grid with no initial matches but with potential moves
 export function generatePuzzleGrid(rows, colors) {
   let grid = [];
+  let isValid = false;
+  let attempts = 0;
+  const MAX_ATTEMPTS = 100; // Avoid infinite loops
+  const MIN_POTENTIAL_MATCHES = 5; // Ensure there are enough potential moves
   
-  // Create the grid with random colors
-  for (let i = 0; i < rows; i++) {
-    grid[i] = [];
-    for (let j = 0; j < rows; j++) {
-      const color = Math.floor(Math.random() * colors);
-      grid[i][j] = {
-        color,
-        selected: false,
-        matched: false
-      };
+  // Keep generating grids until we find one with no matches and enough potential moves
+  while (!isValid && attempts < MAX_ATTEMPTS) {
+    attempts++;
+    
+    // Create a new grid with random colors
+    grid = [];
+    for (let i = 0; i < rows; i++) {
+      grid[i] = [];
+      for (let j = 0; j < rows; j++) {
+        const color = Math.floor(Math.random() * colors);
+        grid[i][j] = {
+          color,
+          selected: false,
+          matched: false
+        };
+      }
     }
+    
+    // Check if the grid has any matches
+    const matches = checkMatches(grid, rows, rows);
+    
+    // If no matches, check for potential matches
+    if (matches.length === 0) {
+      const potentialMatches = checkPotentialMatches(grid, rows, rows);
+      
+      // If enough potential matches, the grid is valid
+      if (potentialMatches.length >= MIN_POTENTIAL_MATCHES) {
+        isValid = true;
+        console.log(`Generated a valid starting grid with no matches and ${potentialMatches.length} potential moves`);
+      } else {
+        console.log(`Grid had only ${potentialMatches.length} potential moves, need at least ${MIN_POTENTIAL_MATCHES}, regenerating...`);
+      }
+    } else {
+      console.log(`Grid had ${matches.length} matches, regenerating...`);
+    }
+  }
+  
+  // If we couldn't generate a valid grid after MAX_ATTEMPTS, just use the last one
+  if (!isValid) {
+    console.log(`Could not generate an ideal grid after ${MAX_ATTEMPTS} attempts, using last attempt`);
   }
   
   return grid;
@@ -436,8 +476,12 @@ export function processNextCascade(grid, numRows, numCols, numColors) {
 }
 
 // Calculate score based on matches
-export function calculateScore(matches, cascadeMultiplier = 1.0) {
+export function calculateScore(matches, cascadeMultiplier = 1.0, level = 1) {
   let score = 0;
+  
+  // Calculate level score multiplier (increases with level)
+  const levelMultiplier = level > 1 ? 
+    Math.pow(PUZZLE_MODE.LEVEL_SCORE_MULTIPLIER, level - 1) : 1.0;
   
   matches.forEach(match => {
     // Base points for a minimum match
@@ -455,11 +499,16 @@ export function calculateScore(matches, cascadeMultiplier = 1.0) {
     const matchScore = basePoints + lengthBonus;
     
     // Apply cascade multiplier (higher for successive cascade matches)
-    const finalScore = Math.floor(matchScore * cascadeMultiplier);
+    let finalScore = Math.floor(matchScore * cascadeMultiplier);
+    
+    // Apply level multiplier
+    finalScore = Math.floor(finalScore * levelMultiplier);
     
     // Add to total score
     score += finalScore;
   });
+  
+  console.log(`Score calculation: base score: ${score}, level: ${level}, level multiplier: ${Math.pow(PUZZLE_MODE.LEVEL_SCORE_MULTIPLIER, level - 1).toFixed(2)}x`);
   
   return score;
 }

@@ -48,3 +48,10 @@ export function updateScore(score) {
     score
   };
 }
+
+export function updateMatchesMade(matches) {
+  return {
+    type: types.MATCHES_MADE,
+    matches
+  };
+}

@@ -91,9 +91,14 @@ class AppContent extends Component {
     let shuffleColors = gamehelpers.fisherYates(colorArrays[gameLevel]);
     let level = this.getLevel(game.level, game.gameMode);
 
-    // reset game state
+    // reset game state (except score for cumulative scoring)
     this.props.updateClicks(0);
-    this.props.updateScore(0);
+    this.props.updateMatchesMade(0);
+    
+    // Only reset score if starting over completely
+    if (startover === true) {
+      this.props.updateScore(0);
+    }
 
     if (startover === true) {
       level = this.getLevel(0, game.gameMode);
@@ -202,9 +207,15 @@ class AppContent extends Component {
               Score: <Text style={styles.countNumber}>{game.score}</Text>
             </Text>
             <Text style={styles.count}>
+              Matches: <Text style={styles.countNumber}>{game.matchesMade}/{level.matchGoal}</Text>
+            </Text>
+            <Text style={styles.count}>
               Moves: <Text style={styles.countNumber}>{level.moveLimit - game.clicks}</Text>
             </Text>
           </View>
+          <Text style={styles.goalText}>
+            Level {level.level}: Make <Text style={styles.goalNumber}>{level.matchGoal}</Text> matches
+          </Text>
         </View>
       );
     }
@@ -244,6 +255,7 @@ class AppContent extends Component {
           createGrid={this.props.createGrid}
           loadBlocks={this.props.loadBlocks}
           didWin={this.props.didWin}
+          updateMatchesMade={this.props.updateMatchesMade}
           numberofrows={level.numberofrows}
           numberofcolors={level.numberofcolors}
           level={level}
@@ -285,6 +297,10 @@ class AppContent extends Component {
         <WinLose
           won={game.hasWon}
           restart={startover => this.restart(startover)}
+          game={game}
+          updateLevel={this.props.updateLevel}
+          updateMatchesMade={this.props.updateMatchesMade}
+          didWin={this.props.didWin}
         />
         
         {this.renderFooter()}
@@ -320,7 +336,8 @@ function mapDispatchToProps(dispatch) {
       didWin: gameActions.didWin,
       updateLevel: gameActions.updateLevel,
       setGameMode: gameActions.setGameMode,
-      updateScore: gameActions.updateScore
+      updateScore: gameActions.updateScore,
+      updateMatchesMade: gameActions.updateMatchesMade
     },
     dispatch
   );
@@ -401,6 +418,17 @@ const styles = StyleSheet.create({
   },
   countNumber: {
     fontWeight: 'bold',
+  },
+  goalText: {
+    fontSize: 18,
+    color: 'white',
+    marginTop: 0,
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  goalNumber: {
+    fontWeight: 'bold',
+    fontSize: 20,
   },
   footer: {
     padding: 30,

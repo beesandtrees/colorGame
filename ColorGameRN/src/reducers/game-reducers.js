@@ -7,7 +7,8 @@ const initialState = {
   grid: [],
   blocks: [],
   gameMode: 'classic', // 'classic' or 'puzzle'
-  score: 0
+  score: 0,
+  matchesMade: 0
 };
 
 export default function GameReducer(state = initialState, action = {}) {
@@ -46,6 +47,12 @@ export default function GameReducer(state = initialState, action = {}) {
       return {
         ...state,
         score: action.score
+      };
+    case types.MATCHES_MADE:
+      console.log('Updating matches made in Redux:', action.matches);
+      return {
+        ...state,
+        matchesMade: action.matches
       };
     default:
       return state;
