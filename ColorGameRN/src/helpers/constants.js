@@ -11,11 +11,11 @@ export const PUZZLE_MODE = {
   // Matching rules
   MIN_MATCH_LENGTH: 3,            // Minimum length for a match
   
-  // Animation delays
-  MATCH_ANIMATION_DELAY: 800,     // Delay for match animations
-  GRAVITY_ANIMATION_DELAY: 1000,  // Delay for gravity animations
-  CASCADE_ANIMATION_DELAY: 1200,  // Delay between cascade steps
-  NEW_BLOCK_ANIMATION_DELAY: 900, // Delay for new block animations
+  // Animation delays - ensuring visibility while maintaining flow
+  MATCH_ANIMATION_DELAY: 400,     // Delay for match animations
+  GRAVITY_ANIMATION_DELAY: 400,   // Delay for gravity animations
+  CASCADE_ANIMATION_DELAY: 400,   // Delay between cascade steps
+  NEW_BLOCK_ANIMATION_DELAY: 400, // Delay for new block animations
   
   // Scoring
   BASE_POINTS: 10,                // Base points for a minimum match
