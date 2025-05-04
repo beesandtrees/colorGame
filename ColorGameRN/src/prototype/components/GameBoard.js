@@ -104,11 +104,12 @@ const GameBoard = ({
     
     if (blockIndex === -1) return;
     
-    // If no block is selected yet, select this one
+    // If no block is selected yet, select this one and clear all other selections
     if (!selectedBlock) {
-      const updatedGrid = grid.map((block, index) => 
-        index === blockIndex ? { ...block, selected: true } : block
-      );
+      const updatedGrid = grid.map((block, index) => ({
+        ...block,
+        selected: index === blockIndex
+      }));
       
       setGrid(updatedGrid);
       setSelectedBlock({ row, col, index: blockIndex });
@@ -117,9 +118,10 @@ const GameBoard = ({
     
     // If the same block is selected again, deselect it
     if (selectedBlock.row === row && selectedBlock.col === col) {
-      const updatedGrid = grid.map((block, index) => 
-        index === blockIndex ? { ...block, selected: false } : block
-      );
+      const updatedGrid = grid.map(block => ({
+        ...block,
+        selected: false
+      }));
       
       setGrid(updatedGrid);
       setSelectedBlock(null);
@@ -133,10 +135,21 @@ const GameBoard = ({
     );
     
     if (isAdjacent) {
+      // Clear all selections before swap
+      const updatedGrid = grid.map(block => ({
+        ...block,
+        selected: false
+      }));
+      
+      setGrid(updatedGrid);
+      
       // Attempt to swap blocks
       swapBlocks(selectedBlock.index, blockIndex);
+      
+      // Clear selection state
+      setSelectedBlock(null);
     } else {
-      // If not adjacent, deselect the previous and select the new one
+      // If not adjacent, deselect all and select only the new one
       const updatedGrid = grid.map((block, index) => ({
         ...block,
         selected: index === blockIndex
@@ -147,147 +160,180 @@ const GameBoard = ({
     }
   };
   
-  // Handle swapping blocks
+  // Handle swapping blocks - completely revised
   const swapBlocks = async (index1, index2) => {
     if (animationInProgress.current) return;
     animationInProgress.current = true;
     setIsAnimating(true);
     
-    // Determine swap direction for animations
-    const block1 = grid[index1];
-    const block2 = grid[index2];
-    
-    let direction1, direction2;
-    
-    if (block1.row === block2.row) {
-      // Horizontal swap
-      direction1 = block1.col < block2.col ? 'right' : 'left';
-      direction2 = direction1 === 'right' ? 'left' : 'right';
-    } else {
-      // Vertical swap
-      direction1 = block1.row < block2.row ? 'down' : 'up';
-      direction2 = direction1 === 'down' ? 'up' : 'down';
-    }
-    
-    // Start the animation
-    const updatedGrid = grid.map((block, index) => {
-      if (index === index1) {
-        return { ...block, swapDirection: direction1, selected: false };
-      } else if (index === index2) {
-        return { ...block, swapDirection: direction2, selected: false };
+    try {
+      // Make sure both blocks exist
+      if (index1 === -1 || index2 === -1 || !grid[index1] || !grid[index2]) {
+        console.error("Invalid block indices for swap");
+        return;
       }
-      return block;
-    });
-    
-    setGrid(updatedGrid);
-    setSelectedBlock(null);
-    
-    // Wait for animation to complete
-    await new Promise(resolve => setTimeout(resolve, 200));
-    
-    // Swap the colors in the data
-    const tempColorIndex = grid[index1].colorIndex;
-    
-    // Create new grid with swapped colors but KEEP the swapDirection for now
-    // This ensures the blocks don't move back during animation
-    const swappedGrid = grid.map((block, index) => {
-      if (index === index1) {
-        return { 
-          ...block, 
-          colorIndex: grid[index2].colorIndex,
-          // Keep swapDirection
-        };
-      } else if (index === index2) {
-        return { 
-          ...block, 
-          colorIndex: tempColorIndex,
-          // Keep swapDirection
-        };
+      
+      // Get the blocks we want to swap
+      const block1 = grid[index1];
+      const block2 = grid[index2];
+      
+      // Determine swap directions
+      let direction1, direction2;
+      
+      if (block1.row === block2.row) {
+        // Horizontal swap
+        direction1 = block1.col < block2.col ? 'right' : 'left';
+        direction2 = direction1 === 'right' ? 'left' : 'right';
+      } else {
+        // Vertical swap
+        direction1 = block1.row < block2.row ? 'down' : 'up';
+        direction2 = direction1 === 'down' ? 'up' : 'down';
       }
-      return block;
-    });
-    
-    // Check for matches with swapped colors
-    const matchedBlocks = findMatches(swappedGrid);
-    
-    if (matchedBlocks.length > 0) {
-      // We have matches! Update moves count
-      setMovesCount(prev => prev + 1);
       
-      // Flatten match positions for easier checking
-      const matchedPositions = matchedBlocks.flat();
+      console.log(`SWAP: [${block1.row},${block1.col}] ${direction1} <-> [${block2.row},${block2.col}] ${direction2}`);
       
-      // Create a new grid where:
-      // 1. Swapped blocks that are in a match keep their direction (so they don't animate back)
-      // 2. Swapped blocks that are not in a match need to clear their direction so they don't keep moving
-      // 3. Mark all matched blocks
-      const gridWithMatches = swappedGrid.map((block, index) => {
-        // Check if this block is part of a match
-        const isMatched = matchedPositions.some(mb => mb.row === block.row && mb.col === block.col);
-        
-        if (index === index1 || index === index2) {
-          // This is one of the swapped blocks
-          return {
-            ...block,
-            // Only clear swapDirection if not matched, to prevent moving back
-            swapDirection: isMatched ? block.swapDirection : null,
-            matched: isMatched
-          };
-        }
-        
-        return {
-          ...block,
-          matched: isMatched
-        };
-      });
+      // Create a fresh grid with all selections cleared
+      const freshGrid = grid.map(block => ({
+        ...block,
+        selected: false,
+        swapDirection: null // Clear any previous swap directions
+      }));
       
-      setGrid(gridWithMatches);
-      
-      // Wait for match animation
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Process matches (clear and apply gravity)
-      await processMatches(gridWithMatches, matchedBlocks);
-    } else {
-      // No matches, swap back - add reverse direction
-      const swapBackGrid = swappedGrid.map((block, index) => {
+      // Now set the swap directions for the two blocks
+      const animatingGrid = freshGrid.map((block, index) => {
         if (index === index1) {
-          return { 
-            ...block, 
-            swapDirection: direction2,   // Reverse direction
-            colorIndex: grid[index1].colorIndex  // Restore original color
-          };
+          return { ...block, swapDirection: direction1 };
         } else if (index === index2) {
-          return { 
-            ...block, 
-            swapDirection: direction1,   // Reverse direction
-            colorIndex: grid[index2].colorIndex  // Restore original color
-          };
+          return { ...block, swapDirection: direction2 };
         }
         return block;
       });
       
-      setGrid(swapBackGrid);
+      // Update the grid to start animation
+      setGrid(animatingGrid);
+      setSelectedBlock(null);
       
       // Wait for animation to complete
       await new Promise(resolve => setTimeout(resolve, 200));
       
-      // Reset the grid - clear swap directions but keep original colors
-      const resetGrid = swapBackGrid.map((block, index) => {
-        if (index === index1 || index === index2) {
-          return {
-            ...block,
-            swapDirection: null  // Just clear the animation direction
-          };
+      // STEP 2: Check if the swap creates a match
+      const tempColorIndex = block1.colorIndex;
+      
+      // Create a test grid with swapped colors to check for matches
+      const testGrid = animatingGrid.map((block, index) => {
+        if (index === index1) {
+          return { ...block, colorIndex: block2.colorIndex };
+        } else if (index === index2) {
+          return { ...block, colorIndex: tempColorIndex };
         }
         return block;
       });
       
-      setGrid(resetGrid);
+      const matchedBlocks = findMatches(testGrid);
+      const hasMatches = matchedBlocks.length > 0;
+      
+      if (hasMatches) {
+        // STEP 3A: This is a successful swap with matches!
+        console.log(`Successful swap with ${matchedBlocks.length} matches`);
+        
+        // Update moves count
+        setMovesCount(prev => prev + 1);
+        
+        // Get a flattened list of matched positions for easier checking
+        const matchedPositions = matchedBlocks.flat();
+        
+        // CRITICAL FIX: Check if either swapped block is part of a match
+        // We need to log this information for debugging
+        const block1IsMatched = matchedPositions.some(
+          mb => mb.row === block1.row && mb.col === block1.col
+        );
+        
+        const block2IsMatched = matchedPositions.some(
+          mb => mb.row === block2.row && mb.col === block2.col
+        );
+        
+        console.log(`Swapped blocks match status: Block1[${block1.row},${block1.col}]: ${block1IsMatched ? 'MATCHED' : 'not matched'}, Block2[${block2.row},${block2.col}]: ${block2IsMatched ? 'MATCHED' : 'not matched'}`);
+        
+        // Apply the color swap and mark matched blocks - with fixed logic
+        const finalGrid = animatingGrid.map((block, index) => {
+          // First, make a copy of the block with swapped colors
+          let newBlock;
+          
+          if (index === index1) {
+            // First swapped block - gets color from second block
+            newBlock = {
+              ...block,
+              colorIndex: block2.colorIndex,
+              swapDirection: null  // Clear animation state
+            };
+            
+            // Check if this block is in a match
+            newBlock.matched = matchedPositions.some(
+              mb => mb.row === block.row && mb.col === block.col
+            );
+            
+            return newBlock;
+          } 
+          else if (index === index2) {
+            // Second swapped block
+            const newBlock = {
+              ...block,
+              colorIndex: tempColorIndex,
+              swapDirection: null  // Clear animation state
+            };
+            
+            // Check if this block is in a match
+            newBlock.matched = matchedPositions.some(
+              mb => mb.row === block.row && mb.col === block.col
+            );
+            
+            return newBlock;
+          }
+          
+          // All other blocks - just check if they're in a match
+          return {
+            ...block,
+            selected: false, // Clear any selections
+            matched: matchedPositions.some(
+              mb => mb.row === block.row && mb.col === block.col
+            )
+          };
+        });
+        
+        setGrid(finalGrid);
+        
+        // Wait for match animation
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Process matches (clear and apply gravity)
+        await processMatches(finalGrid, matchedBlocks);
+      } else {
+        // STEP 3B: No matches, so revert the swap
+        console.log("No matches from swap, reverting to original state");
+        
+        // First, restore original colors
+        const revertedGrid = animatingGrid.map((block, index) => {
+          if (index === index1 || index === index2) {
+            return {
+              ...block,
+              colorIndex: index === index1 ? block1.colorIndex : block2.colorIndex,
+              swapDirection: null,
+              selected: false
+            };
+          }
+          return block;
+        });
+        
+        // Update grid to reset positions and colors
+        setGrid(revertedGrid);
+      }
+    } catch (error) {
+      console.error("Error in swapBlocks:", error);
+    } finally {
+      // Always clean up animation state
+      animationInProgress.current = false;
+      setIsAnimating(false);
     }
-    
-    animationInProgress.current = false;
-    setIsAnimating(false);
   };
   
   // Find matches in the grid
@@ -373,96 +419,221 @@ const GameBoard = ({
     return [...horizontalMatches, ...verticalMatches];
   };
   
-  // Process matched blocks - clear and apply gravity
+  // Process matched blocks with improved debugging and validation
   const processMatches = async (currentGrid, matches) => {
+    // First validate that we have valid matches to process
+    if (!matches || matches.length === 0) {
+      console.warn("No matches to process!");
+      return;
+    }
+    
     // Calculate score (10 points per block, with multiplier for more blocks)
-    const matchScore = matches.length * 10 * (1 + (matches.length - 3) * 0.1);
+    const matchedPositions = matches.flat();
+    const matchCount = matchedPositions.length;
+    
+    // Validate that the matched positions are valid
+    if (matchCount === 0) {
+      console.warn("No matched positions in the matches array!");
+      return;
+    }
+    
+    const matchScore = matchCount * 10 * (1 + (matchCount - 3) * 0.1);
     setScore(prev => {
       const newScore = prev + matchScore;
       if (onScoreUpdate) onScoreUpdate(newScore);
       return newScore;
     });
     
-    // Get flat list of all matched positions
-    const matchedPositions = matches.flat();
+    console.log(`Processing ${matchCount} matched blocks in ${matches.length} match groups`);
     
-    // Clear matched blocks (mark them as empty)
-    const clearedGrid = currentGrid.map(block => {
-      if (matchedPositions.some(m => m.row === block.row && m.col === block.col)) {
-        return { 
-          ...block, 
-          colorIndex: -1,   // Mark as empty
-          matched: false    // Reset matched state
-        };
+    // Step 1: Create a validated 2D grid from the current state
+    // This ensures we have a complete and valid representation of the board
+    let initialGrid2D = Array(rows).fill().map(() => Array(rows).fill(null));
+    
+    // First pass: Fill the grid with the current blocks
+    currentGrid.forEach(block => {
+      if (block && block.row >= 0 && block.row < rows && block.col >= 0 && block.col < rows) {
+        initialGrid2D[block.row][block.col] = block;
       }
-      return block;
     });
     
+    // Second pass: Ensure every position has a valid block (should never happen, but just in case)
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < rows; col++) {
+        if (!initialGrid2D[row][col]) {
+          console.warn(`Found empty position at [${row},${col}], adding placeholder`);
+          // Add a placeholder block
+          initialGrid2D[row][col] = {
+            id: `placeholder_${row}_${col}_${Date.now()}`,
+            row: row,
+            col: col,
+            colorIndex: Math.floor(Math.random() * colors.length),
+            selected: false,
+            matched: false,
+            isNew: false,
+            swapDirection: null
+          };
+        }
+      }
+    }
+    
+    // Step 2: Create a new grid with matched blocks marked as empty
+    let clearedGrid2D = initialGrid2D.map(row => 
+      row.map(block => {
+        // Check if this block is in a match
+        const isMatched = matchedPositions.some(
+          pos => pos.row === block.row && pos.col === block.col
+        );
+        
+        if (isMatched) {
+          // Mark this block as empty
+          return {
+            ...block,
+            colorIndex: -1,  // Mark as empty
+            matched: false   // Reset matched state
+          };
+        }
+        return block;
+      })
+    );
+    
+    // Convert back to flat array for rendering
+    const clearedGrid = [];
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < rows; col++) {
+        clearedGrid.push(clearedGrid2D[row][col]);
+      }
+    }
+    
+    // Update the grid
     setGrid(clearedGrid);
     
     // Allow time for match clear animation
     await new Promise(resolve => setTimeout(resolve, 300));
     
-    // Apply gravity (move blocks down to fill empty spaces)
-    // We'll use a 2D approach for clarity
-    
-    // First convert to 2D grid for easier processing
-    let grid2D = Array(rows).fill().map(() => Array(rows).fill(null));
-    
-    // Fill the 2D grid with current blocks
-    clearedGrid.forEach(block => {
-      if (block.row >= 0 && block.row < rows && block.col >= 0 && block.col < rows) {
-        grid2D[block.row][block.col] = block;
+    // Step 3: Apply gravity with robust error checking
+    // First convert the 2D grid back to a 1D array for consistent processing
+    const flattenedClearedGrid = [];
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < rows; col++) {
+        flattenedClearedGrid.push(clearedGrid2D[row][col]);
       }
-    });
+    }
     
     // Apply gravity column by column
     let newGrid = [];
     
     for (let col = 0; col < rows; col++) {
-      // Count empty spaces and collect blocks in this column
-      let emptySpaces = 0;
-      let colBlocks = [];
+      // Step 1: Collect all non-empty blocks in this column
+      const colBlocks = [];
       
       // Go from bottom to top
       for (let row = rows - 1; row >= 0; row--) {
-        const block = grid2D[row][col];
+        // Find the block at this position
+        const block = flattenedClearedGrid.find(b => b.row === row && b.col === col);
         
-        if (!block || block.colorIndex === -1) {
-          // Count empty spaces
-          emptySpaces++;
-        } else {
-          // This is a non-empty block that needs to be kept
+        if (block && block.colorIndex !== -1) {
+          // This is a valid non-empty block we need to keep
           colBlocks.push(block);
         }
       }
       
-      // Now redistribute the blocks from bottom to top
-      let currentRow = rows - 1;
+      // Step 2: Calculate how many empty spaces/new blocks we need
+      const emptySpaces = rows - colBlocks.length;
       
-      // Place existing blocks first
-      colBlocks.forEach(block => {
+      // Validation check
+      if (emptySpaces < 0 || emptySpaces > rows) {
+        console.error(`Invalid empty spaces count: ${emptySpaces} in column ${col}`);
+        // Correct the count
+        emptySpaces = Math.max(0, Math.min(rows, emptySpaces));
+      }
+      
+      if (colBlocks.length + emptySpaces !== rows) {
+        console.error(`Column ${col} has incorrect block count: ${colBlocks.length} blocks + ${emptySpaces} spaces != ${rows} total`);
+      }
+      
+      // Step 3: Redistribute blocks from bottom to top
+      let currentRow = rows - 1; // Start from the bottom row
+      
+      // Place existing blocks first (they fall to the bottom)
+      for (let i = 0; i < colBlocks.length; i++) {
+        const block = colBlocks[i];
         newGrid.push({
           ...block,
           row: currentRow,  // New row position
-          col: col          // Column stays the same
+          col: col,         // Column stays the same
+          // Clear any animation state for consistency
+          swapDirection: null,
+          selected: false
         });
-        currentRow--;
-      });
+        currentRow--; // Move up one row
+      }
       
-      // Then fill empty spaces at the top with new blocks
+      // Step 4: Fill empty spaces at the top with new blocks
+      // Use a timestamp base for all IDs in this column to avoid duplicates
+      const timestamp = Date.now();
+      
       for (let i = 0; i < emptySpaces; i++) {
+        // Generate a truly unique ID
+        const uniqueId = `new_${timestamp}_${col}_${i}_${Math.random().toString(36).substr(2, 5)}`;
+        
+        // Create a new block
         newGrid.push({
-          id: `${currentRow}_${col}_new`, // New unique ID
+          id: uniqueId,
           row: currentRow,
           col: col,
-          colorIndex: Math.floor(Math.random() * colors.length),
+          colorIndex: Math.floor(Math.random() * colors.length), // Random color
           selected: false,
           matched: false,
-          isNew: true,
+          isNew: true, // Mark as a new block for animation
           swapDirection: null
         });
-        currentRow--;
+        currentRow--; // Move up one row
+      }
+    }
+    
+    // Final validation - make sure we have the correct number of blocks
+    if (newGrid.length !== rows * rows) {
+      console.error(`CRITICAL ERROR: Grid has ${newGrid.length} blocks, expected ${rows * rows}`);
+      
+      // Emergency fix - add missing blocks or remove extra blocks
+      if (newGrid.length < rows * rows) {
+        // Add missing blocks
+        const missingCount = rows * rows - newGrid.length;
+        console.warn(`Adding ${missingCount} missing blocks`);
+        
+        // Create a set of existing positions for quick lookup
+        const existingPositions = new Set();
+        newGrid.forEach(block => {
+          existingPositions.add(`${block.row},${block.col}`);
+        });
+        
+        // Find missing positions and add blocks
+        for (let row = 0; row < rows; row++) {
+          for (let col = 0; col < rows; col++) {
+            const posKey = `${row},${col}`;
+            if (!existingPositions.has(posKey)) {
+              // Add a new block at this position
+              newGrid.push({
+                id: `emergency_${row}_${col}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                row: row,
+                col: col,
+                colorIndex: Math.floor(Math.random() * colors.length),
+                selected: false,
+                matched: false,
+                isNew: true,
+                swapDirection: null
+              });
+              
+              if (newGrid.length >= rows * rows) break;
+            }
+          }
+          if (newGrid.length >= rows * rows) break;
+        }
+      } else if (newGrid.length > rows * rows) {
+        // Remove extra blocks
+        console.warn(`Removing ${newGrid.length - rows * rows} extra blocks`);
+        newGrid = newGrid.slice(0, rows * rows);
       }
     }
     
@@ -470,35 +641,74 @@ const GameBoard = ({
     setGrid(newGrid);
     
     // Allow time for blocks to fall and new blocks to appear
-    await new Promise(resolve => setTimeout(resolve, 300));
+    await new Promise(resolve => setTimeout(resolve, 400));
     
-    // Reset isNew flag
+    // Reset isNew flag - this prevents ongoing animations from interfering
     const resetGrid = newGrid.map(block => ({
       ...block,
       isNew: false,
+      // Clear any lingering animation states
+      swapDirection: null,
+      selected: false,
+      matched: false
     }));
     
     setGrid(resetGrid);
     
+    // Add a slight delay to ensure animations are complete
+    await new Promise(resolve => setTimeout(resolve, 50));
+    
     // Check for cascading matches
     const cascadeMatches = findMatches(resetGrid);
+    
     if (cascadeMatches.length > 0) {
-      // Get flat list of all matched positions
-      const matchedPositions = cascadeMatches.flat();
+      console.log(`Found ${cascadeMatches.length} cascade matches!`);
       
-      // Process cascading matches - mark blocks as matched
-      const gridWithCascadeMatches = resetGrid.map(block => ({
-        ...block,
-        matched: matchedPositions.some(mb => mb.row === block.row && mb.col === block.col),
-      }));
+      // Process cascading matches
+      const flatMatchedPositions = cascadeMatches.flat();
       
+      // Log the cascade matches found
+      flatMatchedPositions.forEach(pos => {
+        console.log(`Cascade match at [${pos.row},${pos.col}]`);
+      });
+      
+      // Mark blocks as matched
+      const gridWithCascadeMatches = resetGrid.map(block => {
+        const isMatched = flatMatchedPositions.some(
+          mb => mb.row === block.row && mb.col === block.col
+        );
+        
+        return {
+          ...block,
+          matched: isMatched,
+          // Important: reset any animation flags
+          isNew: false,
+          swapDirection: null,
+          selected: false
+        };
+      });
+      
+      // Verify all matched positions have corresponding blocks
+      flatMatchedPositions.forEach(pos => {
+        const matchedBlock = gridWithCascadeMatches.find(
+          b => b.row === pos.row && b.col === pos.col && b.matched
+        );
+        
+        if (!matchedBlock) {
+          console.error(`Missing matched block at [${pos.row},${pos.col}]!`);
+        }
+      });
+      
+      // Update the grid with matched blocks
       setGrid(gridWithCascadeMatches);
       
-      // Wait for match animation
+      // Wait for match animation to complete
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Recursively process matches
+      // Recursively process these matches
       await processMatches(gridWithCascadeMatches, cascadeMatches);
+    } else {
+      console.log("No cascade matches found.");
     }
   };
   

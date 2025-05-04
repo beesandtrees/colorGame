@@ -155,15 +155,36 @@ export default class Match3Board extends Component {
   }
 
   // Process the swap between two blocks
-  // Process matches found after a move
+  // Process matches found after a move - with completely rebuilt grid to avoid reference issues
   processMatchesFound(matches, newGrid) {
-    console.log("Processing matches - with visual steps");
+    console.log("Processing matches - with visual steps and deep grid recreation");
     
     // Calculate score with level multiplier
     const scoreGain = match3Helpers.calculateScore(matches, 1.0, this.props.game.level);
     const newScore = this.props.game.score + scoreGain;
     console.log(`Score increased by ${scoreGain} to ${newScore} (level ${this.props.game.level})`);
     this.props.updateScore(newScore);
+    
+    // CRITICAL FIX: Create a BRAND NEW grid with all blocks having unique IDs to avoid reference bugs
+    // This is extreme but will help ensure each block is treated as a separate entity
+    let completelyNewGrid = [];
+    const numberofrows = this.props.numberofrows;
+    
+    // Create a completely new grid structure
+    for (let row = 0; row < numberofrows; row++) {
+      completelyNewGrid[row] = [];
+      for (let col = 0; col < numberofrows; col++) {
+        // Create a brand new block with unique ID
+        const sourceBlock = newGrid[row][col];
+        completelyNewGrid[row][col] = {
+          ...sourceBlock,
+          uniqueBlockId: `block-${row}-${col}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
+        };
+      }
+    }
+    
+    // Use the new grid from now on
+    newGrid = completelyNewGrid;
     
     // Update matchesMade counter (both in local state and Redux)
     const newMatchesMade = this.state.matchesMade + matches.length;
@@ -180,14 +201,60 @@ export default class Match3Board extends Component {
     // STEP 1: First highlight the matched blocks
     const highlightedGrid = JSON.parse(JSON.stringify(newGrid)); // Deep clone to avoid reference issues
     
-    // Mark the matched blocks
+    // Create a list of all matched positions for easy lookup
+    const matchedPositions = [];
+    matches.forEach(match => {
+      match.forEach(pos => {
+        matchedPositions.push(pos);
+      });
+    });
+    
+    // Log all matched positions for debugging
+    console.log(`Total matched positions: ${matchedPositions.length}`);
+    matchedPositions.forEach(pos => {
+      console.log(`Matched position: [${pos.row},${pos.col}]`);
+    });
+    
+    // Mark the matched blocks and track recently swapped blocks with a completely different approach
+    let swappedBlocksInfo = [];
+    
+    // First pass: identify all matched blocks and create fresh tracking info
     matches.forEach(match => {
       match.forEach(pos => {
         if (highlightedGrid[pos.row] && highlightedGrid[pos.row][pos.col]) {
-          highlightedGrid[pos.row][pos.col].matched = true;
+          // Instead of just marking matched, create a COMPLETELY NEW OBJECT to guarantee no reference issues
+          const originalBlock = highlightedGrid[pos.row][pos.col];
+          
+          // Check if this matched block was part of a recent swap
+          if (originalBlock.wasSwapped) {
+            console.log(`⚠️ CRITICAL: Swapped block at [${pos.row},${pos.col}] is part of a match!`);
+            
+            swappedBlocksInfo.push({
+              row: pos.row,
+              col: pos.col,
+              swapPartner: originalBlock.swapPartner,
+              isSourceBlock: true,
+              matchId: `match-${pos.row}-${pos.col}-${Date.now()}`
+            });
+          }
+          
+          // Create a completely new object for the matched block
+          highlightedGrid[pos.row][pos.col] = {
+            ...originalBlock,
+            matched: true,
+            wasMatched: true,
+            matchedAt: Date.now(),
+            mustBeRemoved: true, // New flag to guarantee this gets removed
+            uniqueMatchId: `match-${pos.row}-${pos.col}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
+          };
         }
       });
     });
+    
+    // Log if we found swapped blocks in matches
+    if (swappedBlocksInfo.length > 0) {
+      console.log(`Found ${swappedBlocksInfo.length} swapped blocks that are part of matches`);
+    }
     
     // Update grid to show highlighted matches
     this.props.createGrid(highlightedGrid);
@@ -197,16 +264,34 @@ export default class Match3Board extends Component {
       console.log("STEP 2: Removing matched blocks");
       const removedGrid = JSON.parse(JSON.stringify(highlightedGrid));
       
-      // Remove matched blocks and replace with white spaces
+      // Remove matched blocks and replace with white spaces - completely rebuild removedGrid for safety
+      const timestamp = Date.now(); // Use same timestamp for entire wave of new blocks
+      
+      // First ensure every position has a unique block ID
+      for (let row = 0; row < numberofrows; row++) {
+        for (let col = 0; col < numberofrows; col++) {
+          // Generate a unique ID if one doesn't exist
+          if (!removedGrid[row][col].uniqueBlockId) {
+            removedGrid[row][col].uniqueBlockId = `block-${row}-${col}-${timestamp}-${Math.random().toString(36).substr(2, 5)}`;
+          }
+        }
+      }
+      
+      // Now process the matched positions
       matches.forEach(match => {
         match.forEach(pos => {
           if (removedGrid[pos.row] && removedGrid[pos.row][pos.col]) {
-            // Replace with white empty block
+            // Create a completely new empty block with unique ID
             removedGrid[pos.row][pos.col] = {
               color: -1,
               isEmpty: true,
-              isWhiteSpace: true // Special flag for rendering as white
+              isWhiteSpace: true, // Special flag for rendering as white
+              wasMatched: true, // Flag to indicate this was a matched block
+              needsNewBlock: true, // Flag that this will need a new block
+              uniqueBlockId: `empty-${pos.row}-${pos.col}-${timestamp}-${Math.random().toString(36).substr(2, 5)}`
             };
+            
+            console.log(`MATCH: Creating brand new empty block at [${pos.row},${pos.col}]`);
           }
         });
       });
@@ -222,30 +307,148 @@ export default class Match3Board extends Component {
         const gravityGrid = JSON.parse(JSON.stringify(removedGrid));
         const numberofrows = this.props.numberofrows;
         
-        // Apply gravity - shift blocks down to fill empty spaces
+        // Log each column's state before applying gravity
+        console.log("DETAILED COLUMN STATUS BEFORE GRAVITY:");
         for (let col = 0; col < numberofrows; col++) {
-          // Collect all non-empty blocks in the column
-          const colBlocks = [];
+          let columnDesc = `Column ${col}: `;
           for (let row = 0; row < numberofrows; row++) {
-            if (!gravityGrid[row][col].isEmpty && gravityGrid[row][col].color !== -1) {
-              colBlocks.push(gravityGrid[row][col]);
+            const block = gravityGrid[row][col];
+            const isEmpty = block.isEmpty || block.color === -1;
+            const wasMatched = block.wasMatched || false;
+            const wasSwapped = block.wasSwapped || false;
+            
+            columnDesc += `[${row}]=${isEmpty ? 'empty' : block.color}${wasMatched ? 'M' : ''}${wasSwapped ? 'S' : ''} `;
+          }
+          console.log(columnDesc);
+        }
+        
+        // DO NOT CLEAR wasSwapped FLAGS - let the gravity algorithm handle them with special care
+        
+        // IMPROVED GRAVITY ALGORITHM WITH SPECIAL HANDLING FOR MATCHED+SWAPPED BLOCKS
+        // Apply gravity by processing each column separately
+        for (let col = 0; col < numberofrows; col++) {
+          console.log(`Applying gravity to column ${col}`);
+          
+          // Step 1: First separate blocks into regular blocks and swapped blocks
+          const swappedBlocks = [];
+          const regularBlocks = [];
+          
+          for (let row = 0; row < numberofrows; row++) {
+            const block = gravityGrid[row][col];
+            
+            // Only process non-empty blocks
+            if (!block.isEmpty && block.color !== -1) {
+              const blockInfo = {
+                ...block,
+                originalPosition: { row, col }
+              };
+              
+              // Determine if this is a swapped block
+              if (block.wasSwapped) {
+                console.log(`Column ${col}: Found swapped block at [${row},${col}], color ${block.color}`);
+                swappedBlocks.push(blockInfo);
+              } else {
+                console.log(`Column ${col}: Found regular block at [${row},${col}], color ${block.color}`);
+                regularBlocks.push(blockInfo);
+              }
             }
           }
           
-          // Fill from bottom up
-          for (let row = numberofrows - 1; row >= 0; row--) {
-            if (colBlocks.length > 0) {
-              // Place a block from our collection
-              gravityGrid[row][col] = colBlocks.pop();
-            } else {
-              // No more blocks, fill with empty
-              gravityGrid[row][col] = {
-                color: -1,
-                isEmpty: true
+          console.log(`Column ${col}: Found ${swappedBlocks.length} swapped blocks and ${regularBlocks.length} regular blocks`);
+          
+          // Step 2: Clear the entire column
+          for (let row = 0; row < numberofrows; row++) {
+            gravityGrid[row][col] = {
+              color: -1,
+              isEmpty: true,
+              matched: false,
+              selected: false,
+              needsNewBlock: true, // This is a position that will need a new block
+              wasWhiteSpace: true  // This was originally a whitespace
+            };
+          }
+          
+          // Step 3: First place swapped blocks back in their EXACT positions
+          // This is crucial for maintaining the game's integrity
+          swappedBlocks.forEach(block => {
+            const { originalPosition, ...blockProps } = block;
+            
+            // Only preserve non-matched swapped blocks
+            if (!block.wasMatched) {
+              console.log(`Column ${col}: Preserving swapped block at original position [${originalPosition.row},${originalPosition.col}]`);
+              
+              // Put the block back exactly where it was
+              gravityGrid[originalPosition.row][originalPosition.col] = {
+                ...blockProps,
+                moved: false,
+                falling: false,
+                needsNewBlock: false,
+                wasWhiteSpace: false
               };
+            } else {
+              console.log(`Column ${col}: Swapped block at [${originalPosition.row},${originalPosition.col}] was matched, not preserving`);
+            }
+          });
+          
+          // Step 4: Now place regular blocks from bottom up, avoiding swapped block positions
+          // Start from the bottom of the grid
+          let targetRow = numberofrows - 1;
+          
+          while (regularBlocks.length > 0 && targetRow >= 0) {
+            // If this position already has a swapped block, skip it
+            if (!gravityGrid[targetRow][col].isEmpty && !gravityGrid[targetRow][col].needsNewBlock) {
+              console.log(`Column ${col}: Position [${targetRow},${col}] already has a block, skipping`);
+              targetRow--;
+              continue;
+            }
+            
+            // Place the next regular block
+            const nextBlock = regularBlocks.pop(); // Take blocks from the bottom of the column first
+            const { originalPosition, ...blockProps } = nextBlock;
+            
+            console.log(`Column ${col}: Moving block from [${originalPosition.row},${originalPosition.col}] to [${targetRow},${col}]`);
+            
+            // Place block in the new position
+            gravityGrid[targetRow][col] = {
+              ...blockProps,
+              moved: originalPosition.row !== targetRow, // Track if it moved
+              falling: originalPosition.row !== targetRow, // Only animate if it actually moved
+              originalRow: originalPosition.row, // Keep original position for animation
+              needsNewBlock: false,
+              wasWhiteSpace: false
+            };
+            
+            // Move to next position up
+            targetRow--;
+          }
+          
+          // Any positions above that weren't filled will get new blocks in the next step
+        }
+        
+        // Log each column's state after applying gravity
+        console.log("DETAILED COLUMN STATUS AFTER GRAVITY:");
+        for (let col = 0; col < numberofrows; col++) {
+          let columnDesc = `Column ${col}: `;
+          for (let row = 0; row < numberofrows; row++) {
+            const block = gravityGrid[row][col];
+            const isEmpty = block.isEmpty || block.color === -1;
+            const needsNewBlock = block.needsNewBlock || false;
+            
+            columnDesc += `[${row}]=${isEmpty ? 'empty' : block.color}${needsNewBlock ? 'N' : ''} `;
+          }
+          console.log(columnDesc);
+        }
+        
+        // Validate that we've processed all blocks correctly
+        let emptyCount = 0;
+        for (let row = 0; row < numberofrows; row++) {
+          for (let col = 0; col < numberofrows; col++) {
+            if (gravityGrid[row][col].isEmpty || gravityGrid[row][col].color === -1) {
+              emptyCount++;
             }
           }
         }
+        console.log(`After gravity, grid has ${emptyCount} empty spaces that need new blocks`);
         
         // Show the blocks after gravity is applied
         this.props.createGrid(gravityGrid);
@@ -257,17 +460,54 @@ export default class Match3Board extends Component {
           // Create a grid with new blocks
           const finalGrid = JSON.parse(JSON.stringify(gravityGrid));
           
-          // Add new blocks at the top where empty
+          // Add new blocks ONLY at positions marked needsNewBlock
+          let addedBlocks = 0;
+          for (let row = 0; row < numberofrows; row++) {
+            for (let col = 0; col < numberofrows; col++) {
+              // Only add blocks to positions that explicitly need them
+              if (finalGrid[row][col].needsNewBlock === true) {
+                // Generate a random color with a unique ID
+                const newColor = Math.floor(Math.random() * this.props.numberofcolors);
+                
+                // Create a new random block
+                finalGrid[row][col] = {
+                  color: newColor,
+                  isNew: true, // Mark as new for animation
+                  id: `new-${row}-${col}-${Date.now()}`, // Add unique ID for tracking
+                  fromTop: true // Flag that this came from the top
+                };
+                
+                addedBlocks++;
+                console.log(`Added new block at [${row},${col}] with color ${newColor}`);
+              }
+            }
+          }
+          
+          console.log(`Added ${addedBlocks} new blocks to fill empty spaces`);
+          
+          // Final validation: Make sure there are no empty cells left
+          let emptyCount = 0;
           for (let row = 0; row < numberofrows; row++) {
             for (let col = 0; col < numberofrows; col++) {
               if (finalGrid[row][col].isEmpty || finalGrid[row][col].color === -1) {
-                // Create a new random block
+                console.warn(`WARNING: Cell at [${row},${col}] is still empty after filling new blocks`);
+                
+                // Emergency add a random block here
+                const emergencyColor = Math.floor(Math.random() * this.props.numberofcolors);
                 finalGrid[row][col] = {
-                  color: Math.floor(Math.random() * this.props.numberofcolors),
-                  isNew: true
+                  color: emergencyColor,
+                  isNew: true,
+                  isEmergency: true,
+                  id: `emergency-${row}-${col}-${Date.now()}`
                 };
+                
+                emptyCount++;
               }
             }
+          }
+          
+          if (emptyCount > 0) {
+            console.warn(`Had to add ${emptyCount} emergency blocks to fill remaining empty cells`);
           }
           
           // Update the grid with final state
@@ -322,10 +562,25 @@ export default class Match3Board extends Component {
     const { grid } = this.props.game;
     const { numberofrows } = this.props;
     
+    // Cache references to original blocks for debugging
+    const block1 = {
+      row: row1,
+      col: col1,
+      color: grid[row1][col1].color
+    };
+    
+    const block2 = {
+      row: row2,
+      col: col2,
+      color: grid[row2][col2].color
+    };
+    
+    console.log(`Original blocks: Block1[${row1},${col1}]: color ${block1.color}, Block2[${row2},${col2}]: color ${block2.color}`);
+    
     // Clone the grid - use direct copy for React Native/Hermes compatibility
     let newGrid = grid.map(row => [...row]);
     
-    // Swap the blocks
+    // Swap the blocks using the improved swapBlocks function (adds wasSwapped flags)
     newGrid = match3Helpers.swapBlocks(
       newGrid,
       row1, col1,
@@ -348,18 +603,59 @@ export default class Match3Board extends Component {
     
     console.log(`Found ${matches.length} matches after swap`);
     
+    // Create a list of all matched positions for debugging
+    const matchedPositions = [];
+    matches.forEach(match => {
+      match.forEach(pos => {
+        matchedPositions.push(pos);
+      });
+    });
+    
+    // Check if either swapped block is part of a match
+    const block1IsMatched = matchedPositions.some(
+      mb => mb.row === block1.row && mb.col === block1.col
+    );
+    
+    const block2IsMatched = matchedPositions.some(
+      mb => mb.row === block2.row && mb.col === block2.col
+    );
+    
+    console.log(`Swapped blocks match status: Block1[${block1.row},${block1.col}]: ${block1IsMatched ? 'MATCHED' : 'not matched'}, Block2[${block2.row},${block2.col}]: ${block2IsMatched ? 'MATCHED' : 'not matched'}`);
+    
     if (matches.length > 0) {
       // Process matches using our unified method
       this.processMatchesFound(matches, newGrid);
     } else {
-      // If no matches after swap, swap blocks back
+      // If no matches after swap, swap blocks back and clear wasSwapped flags
       console.log("No matches found, swapping back");
       
+      // We need to manually clear the wasSwapped flags when swapping back
+      const clearedGrid = newGrid.map(row => [...row]);
+      for (let row = 0; row < numberofrows; row++) {
+        for (let col = 0; col < numberofrows; col++) {
+          if (clearedGrid[row][col].wasSwapped) {
+            delete clearedGrid[row][col].wasSwapped;
+            delete clearedGrid[row][col].swapPartner;
+          }
+        }
+      }
+      
       newGrid = match3Helpers.swapBlocks(
-        newGrid,
+        clearedGrid,
         row2, col2,
         row1, col1
       );
+      
+      // Also clear the wasSwapped flags after swapping back
+      for (let row = 0; row < numberofrows; row++) {
+        for (let col = 0; col < numberofrows; col++) {
+          if (newGrid[row][col].wasSwapped) {
+            delete newGrid[row][col].wasSwapped;
+            delete newGrid[row][col].swapPartner;
+          }
+        }
+      }
+      
       this.props.createGrid(newGrid);
     }
     
@@ -740,7 +1036,7 @@ export default class Match3Board extends Component {
     this.props.didWin(true);
   }
   
-  // Simpler cascade match handler
+  // Improved cascade match handler
   processCascadeMatches(grid, currentScore) {
     const numberofrows = this.props.numberofrows;
     
@@ -768,6 +1064,16 @@ export default class Match3Board extends Component {
       // STEP 1: First highlight the cascade matches
       const highlightedGrid = JSON.parse(JSON.stringify(grid)); // Deep clone
       
+      // Create a list of all matched positions for easy lookup
+      const matchedPositions = [];
+      cascadeMatches.forEach(match => {
+        match.forEach(pos => {
+          matchedPositions.push(pos);
+        });
+      });
+      
+      console.log(`Cascade: Total matched positions: ${matchedPositions.length}`);
+      
       // Mark the matched blocks
       cascadeMatches.forEach(match => {
         match.forEach(pos => {
@@ -782,6 +1088,7 @@ export default class Match3Board extends Component {
       
       // STEP 2: After delay, remove matched blocks and replace with white
       setTimeout(() => {
+        console.log("CASCADE STEP 2: Removing matched blocks");
         const removedGrid = JSON.parse(JSON.stringify(highlightedGrid));
         
         // Remove matched blocks
@@ -792,7 +1099,8 @@ export default class Match3Board extends Component {
               removedGrid[pos.row][pos.col] = {
                 color: -1,
                 isEmpty: true,
-                isWhiteSpace: true // Special flag for rendering as white
+                isWhiteSpace: true, // Special flag for rendering as white
+                wasMatched: true // Flag to indicate this was a matched block
               };
             }
           });
@@ -803,72 +1111,207 @@ export default class Match3Board extends Component {
         
         // STEP 3: After another delay, apply gravity and add new blocks
         setTimeout(() => {
-          const finalGrid = JSON.parse(JSON.stringify(removedGrid));
+          console.log("CASCADE STEP 3: Applying gravity");
           
-          // Apply gravity
+          // Create a new grid for the final state with gravity
+          const gravityGrid = JSON.parse(JSON.stringify(removedGrid));
+          
+          // IMPROVED CASCADE GRAVITY ALGORITHM WITH BETTER TRACKING
+          // Apply gravity by processing each column separately
           for (let col = 0; col < numberofrows; col++) {
-            // Collect all non-empty blocks in the column
-            const colBlocks = [];
+            console.log(`CASCADE: Applying gravity to column ${col}`);
+            
+            // Step 1: First separate blocks into regular blocks and swapped blocks
+            const swappedBlocks = [];
+            const regularBlocks = [];
+            
             for (let row = 0; row < numberofrows; row++) {
-              if (!finalGrid[row][col].isEmpty && finalGrid[row][col].color !== -1) {
-                colBlocks.push(finalGrid[row][col]);
+              const block = gravityGrid[row][col];
+              
+              // Only process non-empty blocks
+              if (!block.isEmpty && block.color !== -1) {
+                const blockInfo = {
+                  ...block,
+                  originalPosition: { row, col }
+                };
+                
+                // Determine if this is a swapped block
+                if (block.wasSwapped) {
+                  console.log(`CASCADE: Column ${col}: Found swapped block at [${row},${col}], color ${block.color}`);
+                  swappedBlocks.push(blockInfo);
+                } else {
+                  console.log(`CASCADE: Column ${col}: Found regular block at [${row},${col}], color ${block.color}`);
+                  regularBlocks.push(blockInfo);
+                }
               }
             }
             
-            // Fill from bottom up
-            for (let row = numberofrows - 1; row >= 0; row--) {
-              if (colBlocks.length > 0) {
-                // Place a block from our collection
-                finalGrid[row][col] = colBlocks.pop();
+            console.log(`CASCADE: Column ${col}: Found ${swappedBlocks.length} swapped blocks and ${regularBlocks.length} regular blocks`);
+            
+            // Step 2: Clear the entire column
+            for (let row = 0; row < numberofrows; row++) {
+              gravityGrid[row][col] = {
+                color: -1,
+                isEmpty: true,
+                matched: false,
+                selected: false,
+                needsNewBlock: true, // This is a position that will need a new block
+                wasWhiteSpace: true  // This was originally a whitespace
+              };
+            }
+            
+            // Step 3: First place swapped blocks back in their EXACT positions
+            // This is crucial for maintaining the game's integrity
+            swappedBlocks.forEach(block => {
+              const { originalPosition, ...blockProps } = block;
+              
+              // Only preserve non-matched swapped blocks
+              if (!block.wasMatched) {
+                console.log(`CASCADE: Column ${col}: Preserving swapped block at original position [${originalPosition.row},${originalPosition.col}]`);
+                
+                // Put the block back exactly where it was
+                gravityGrid[originalPosition.row][originalPosition.col] = {
+                  ...blockProps,
+                  moved: false,
+                  falling: false,
+                  needsNewBlock: false,
+                  wasWhiteSpace: false
+                };
               } else {
-                // No more blocks, fill with empty
-                finalGrid[row][col] = {
-                  color: -1,
-                  isEmpty: true
-                };
+                console.log(`CASCADE: Column ${col}: Swapped block at [${originalPosition.row},${originalPosition.col}] was matched, not preserving`);
+              }
+            });
+            
+            // Step 4: Now place regular blocks from bottom up, avoiding swapped block positions
+            // Start from the bottom of the grid
+            let targetRow = numberofrows - 1;
+            
+            while (regularBlocks.length > 0 && targetRow >= 0) {
+              // If this position already has a block, skip it
+              if (!gravityGrid[targetRow][col].isEmpty && !gravityGrid[targetRow][col].needsNewBlock) {
+                console.log(`CASCADE: Column ${col}: Position [${targetRow},${col}] already has a block, skipping`);
+                targetRow--;
+                continue;
+              }
+              
+              // Place the next regular block
+              const nextBlock = regularBlocks.pop(); // Take blocks from the bottom of the column first
+              const { originalPosition, ...blockProps } = nextBlock;
+              
+              console.log(`CASCADE: Column ${col}: Moving block from [${originalPosition.row},${originalPosition.col}] to [${targetRow},${col}]`);
+              
+              // Place block in the new position
+              gravityGrid[targetRow][col] = {
+                ...blockProps,
+                moved: originalPosition.row !== targetRow, // Track if it moved
+                falling: originalPosition.row !== targetRow, // Only animate if it actually moved
+                originalRow: originalPosition.row, // Keep original position for animation
+                needsNewBlock: false,
+                wasWhiteSpace: false
+              };
+              
+              // Move to next position up
+              targetRow--;
+            }
+            
+            // Any positions above that weren't filled will get new blocks in the next step
+            let emptySpaces = 0;
+            for (let row = 0; row < numberofrows; row++) {
+              if (gravityGrid[row][col].needsNewBlock) {
+                emptySpaces++;
               }
             }
+            console.log(`CASCADE: Column ${col}: Left ${emptySpaces} empty spaces for new blocks`);
           }
           
-          // Add new blocks at the top
-          for (let row = 0; row < numberofrows; row++) {
-            for (let col = 0; col < numberofrows; col++) {
-              if (finalGrid[row][col].isEmpty || finalGrid[row][col].color === -1) {
-                // Create a new random block
-                finalGrid[row][col] = {
-                  color: Math.floor(Math.random() * this.props.numberofcolors),
-                  isNew: true
-                };
+          // Show the blocks after gravity is applied
+          this.props.createGrid(gravityGrid);
+          
+          // STEP 4: After delay, add new blocks
+          setTimeout(() => {
+            console.log("CASCADE STEP 4: Adding new blocks");
+            
+            // Create a grid with new blocks
+            const finalGrid = JSON.parse(JSON.stringify(gravityGrid));
+            
+            // Add new blocks ONLY at positions explicitly marked as needsNewBlock
+            let addedBlocks = 0;
+            for (let row = 0; row < numberofrows; row++) {
+              for (let col = 0; col < numberofrows; col++) {
+                // Only add blocks to positions that explicitly need them
+                if (finalGrid[row][col].needsNewBlock === true) {
+                  // Generate a random color with a unique ID
+                  const newColor = Math.floor(Math.random() * this.props.numberofcolors);
+                  
+                  // Create a new random block
+                  finalGrid[row][col] = {
+                    color: newColor,
+                    isNew: true, // Mark as new for animation
+                    id: `cascade-new-${row}-${col}-${Date.now()}`, // Add unique ID for tracking
+                    fromTop: true // Flag that this came from the top
+                  };
+                  
+                  addedBlocks++;
+                  console.log(`CASCADE: Added new block at [${row},${col}] with color ${newColor}`);
+                }
               }
             }
-          }
-          
-          // Update the grid with the final state
-          this.props.createGrid(finalGrid);
-          
-          // Check for more cascades (limited depth)
-          if (this.state.cascadeCount < MATCH3_MODE.MAX_CASCADE_ITERATIONS) {
-            this.setState({ cascadeCount: this.state.cascadeCount + 1 });
             
-            setTimeout(() => {
-              this.processCascadeMatches(finalGrid, newScore);
-            }, styles.delayLong);
-          } else {
-            // Reset cascade counter
-            this.setState({ cascadeCount: 0 });
+            console.log(`CASCADE: Added ${addedBlocks} new blocks to fill empty spaces`);
             
-            // Now that all cascade processing is done, check for level completion
-            if (this.state.matchesMade >= this.props.level.matchGoal && !this.state.levelCompleted) {
-              console.log("All cascades completed. Checking level completion.");
-              this.setState({ levelCompleted: true }, () => {
-                // Wait a bit before showing completion to allow animations to finish
-                setTimeout(() => {
-                  this.handleLevelComplete();
-                }, styles.delayMedium);
-              });
+            // Final validation: Make sure there are no empty cells left
+            let emptyCount = 0;
+            for (let row = 0; row < numberofrows; row++) {
+              for (let col = 0; col < numberofrows; col++) {
+                if (finalGrid[row][col].isEmpty || finalGrid[row][col].color === -1) {
+                  console.warn(`CASCADE WARNING: Cell at [${row},${col}] is still empty after filling new blocks`);
+                  
+                  // Emergency add a random block here
+                  const emergencyColor = Math.floor(Math.random() * this.props.numberofcolors);
+                  finalGrid[row][col] = {
+                    color: emergencyColor,
+                    isNew: true,
+                    isEmergency: true,
+                    id: `cascade-emergency-${row}-${col}-${Date.now()}`
+                  };
+                  
+                  emptyCount++;
+                }
+              }
             }
-          }
-        }, styles.delayMedium); // Delay before applying gravity and adding new blocks
+            
+            if (emptyCount > 0) {
+              console.warn(`CASCADE: Had to add ${emptyCount} emergency blocks to fill remaining empty cells`);
+            }
+            
+            // Update the grid with the final state
+            this.props.createGrid(finalGrid);
+            
+            // Check for more cascades (limited depth)
+            if (this.state.cascadeCount < MATCH3_MODE.MAX_CASCADE_ITERATIONS) {
+              this.setState({ cascadeCount: this.state.cascadeCount + 1 });
+              
+              setTimeout(() => {
+                console.log(`Starting cascade iteration ${this.state.cascadeCount + 1}`);
+                this.processCascadeMatches(finalGrid, newScore);
+              }, styles.delayLong);
+            } else {
+              // Reset cascade counter
+              this.setState({ cascadeCount: 0 });
+              
+              // Now that all cascade processing is done, check for level completion
+              if (this.state.matchesMade >= this.props.level.matchGoal && !this.state.levelCompleted) {
+                console.log("All cascades completed. Checking level completion.");
+                this.setState({ levelCompleted: true }, () => {
+                  // Wait a bit before showing completion to allow animations to finish
+                  setTimeout(() => {
+                    this.handleLevelComplete();
+                  }, styles.delayMedium);
+                });
+              }
+            }
+          }, styles.delayMedium); // Delay before adding new blocks
+        }, styles.delayMedium); // Delay before applying gravity
       }, styles.delayShort); // Delay before removing matched blocks
     } else {
       // No more cascades, reset counter

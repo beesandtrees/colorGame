@@ -38,19 +38,29 @@ const Match3Prototype = () => {
     }
   };
   
-  // New game
+  // New game - completely restart the game board
   const startNewGame = () => {
+    // Reset game state
     setScore(0);
     setIsGameOver(false);
+    
     // Cycle through color schemes
     setCurrentColorScheme((currentColorScheme + 1) % colorSchemes.length);
+    
+    // Force GameBoard to re-render with a new key
+    // This effectively creates a completely new board component
+    setGameBoardKey(Date.now());
   };
+  
+  // Use a key to force full re-rendering of the game board
+  const [gameBoardKey, setGameBoardKey] = useState(Date.now());
   
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Color Match 3</Text>
       
       <GameBoard 
+        key={gameBoardKey}
         rows={8}
         colors={colorSchemes[currentColorScheme]}
         onScoreUpdate={handleScoreUpdate}

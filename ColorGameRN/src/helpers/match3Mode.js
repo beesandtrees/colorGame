@@ -254,6 +254,31 @@ export function swapBlocks(grid, row1, col1, row2, col2) {
     newGrid[row1][col1].selected = false;
     newGrid[row2][col2].selected = false;
     
+    // CRITICAL FIX: INSTEAD of just marking wasSwapped, create an ENTIRELY NEW block
+    // with its own unique ID to ensure it's treated as a separate entity
+    
+    // Create new block 1 with swap tracking
+    newGrid[row1][col1] = {
+      ...newGrid[row1][col1],
+      wasSwapped: true,
+      originalPosition: { row: row1, col: col1 },
+      finalPosition: { row: row1, col: col1 },
+      swapPartner: { row: row2, col: col2 },
+      swappedBlockId: `swapped-block-${row1}-${col1}-${Date.now()}`
+    };
+    
+    // Create new block 2 with swap tracking
+    newGrid[row2][col2] = {
+      ...newGrid[row2][col2],
+      wasSwapped: true,
+      originalPosition: { row: row2, col: col2 },
+      finalPosition: { row: row2, col: col2 },
+      swapPartner: { row: row1, col: col1 },
+      swappedBlockId: `swapped-block-${row2}-${col2}-${Date.now()}`
+    };
+    
+    console.log(`SWAP: Created entirely new blocks at [${row1},${col1}] and [${row2},${col2}] with unique IDs`);
+    
     return newGrid;
   } catch (error) {
     console.error("Error during swap:", error);
@@ -398,41 +423,140 @@ export function applyGravity(grid, numRows, numCols) {
   console.log("BEFORE GRAVITY - Grid structure:", 
     JSON.stringify(grid.map(row => row.map(cell => cell.color))));
   
-  // Process each column separately
+  // RADICALLY SIMPLIFIED GRAVITY ALGORITHM TO FIX DISAPPEARING DOTS
+  // Process each column separately with focused logic to avoid bugs
   for (let col = 0; col < numCols; col++) {
-    // Start from the bottom of the column and move up
-    let emptyRow = -1;
+    console.log(`Applying gravity to column ${col}`);
     
-    // First, find empty spaces from bottom to top
-    for (let row = numRows - 1; row >= 0; row--) {
-      if (newGrid[row][col].color === -1 || newGrid[row][col].isEmpty) {
-        // If this is an empty space, remember it
-        if (emptyRow === -1) {
-          emptyRow = row;
-        }
-      } 
-      else if (emptyRow !== -1) {
-        // We found a non-empty block above an empty space
-        console.log(`Moving block from [${row},${col}] to [${emptyRow},${col}]`);
-        
-        // Move this block down to the empty space
-        newGrid[emptyRow][col] = {
+    // Step 1: First IDENTIFY all non-empty blocks in the column to track what we have
+    const blockMap = [];
+    for (let row = 0; row < numRows; row++) {
+      if (!newGrid[row][col].isEmpty && newGrid[row][col].color !== -1) {
+        // Store full information about each block
+        blockMap.push({
           ...newGrid[row][col],
-          falling: true // Mark it as falling for animation
-        };
+          position: { row, col }  // Store current position for tracking
+        });
         
-        // Mark the original position as empty
-        newGrid[row][col] = {
-          color: -1,
-          isEmpty: true,
-          matched: false,
-          selected: false
-        };
-        
-        // Update emptyRow to the space above the one we just filled
-        emptyRow--;
+        console.log(`Column ${col}: Found block at [${row},${col}], color ${newGrid[row][col].color}, wasSwapped: ${newGrid[row][col].wasSwapped || false}, wasMatched: ${newGrid[row][col].wasMatched || false}`);
       }
     }
+    
+    // Step 2: TEMPORARILY save column for safety
+    const originalColumn = [];
+    for (let row = 0; row < numRows; row++) {
+      originalColumn[row] = { ...newGrid[row][col] };
+    }
+    
+    // Step 3: Reset the column to all empty
+    for (let row = 0; row < numRows; row++) {
+      newGrid[row][col] = {
+        color: -1,
+        isEmpty: true,
+        matched: false,
+        selected: false,
+        needsNewBlock: true // Mark for new block addition by default
+      };
+    }
+    
+    // Step 4: Process ONLY SURVIVING blocks (non-matched) from bottom to top
+    // First identify surviving blocks that need to be repositioned
+    const survivingBlocks = blockMap.filter(block => !block.wasMatched && !block.matched);
+    console.log(`Column ${col}: Found ${survivingBlocks.length} surviving blocks out of ${blockMap.length} total`);
+    
+    // Start from the bottom of the grid, placing surviving blocks
+    let currentRow = numRows - 1;
+    const placedBlocks = [];
+    
+    // Process each surviving block from bottom to top
+    survivingBlocks.forEach(block => {
+      const { position, ...blockProps } = block;
+      const blockId = block.swappedBlockId || `block-${position.row}-${position.col}`;
+      
+      // If this is a swapped block, keep it at its exact position
+      if (block.wasSwapped) {
+        console.log(`Column ${col}: Found swapped block at [${position.row},${position.col}] with ID ${blockId}`);
+        
+        // Place the swapped block at its EXACT original position, never moving it
+        newGrid[position.row][position.col] = {
+          ...blockProps,
+          position: position,
+          moved: false,
+          falling: false,
+          needsNewBlock: false,
+          uniqueId: blockId
+        };
+        
+        // Record that we've placed this block
+        placedBlocks.push({
+          row: position.row,
+          col: position.col,
+          id: blockId
+        });
+        
+        console.log(`Column ${col}: Preserved swapped block at [${position.row},${position.col}] with ID ${blockId}`);
+      }
+    });
+    
+    // Now fill remaining positions from bottom up with non-swapped surviving blocks
+    let filledCount = 0;
+    
+    // Get non-swapped blocks to place
+    const regularBlocks = survivingBlocks.filter(block => !block.wasSwapped);
+    
+    // Fill from bottom up, skipping positions where swapped blocks already exist
+    while (regularBlocks.length > 0 && currentRow >= 0) {
+      // Check if this position already has a block from the swapped blocks step
+      const alreadyOccupied = placedBlocks.some(placed => 
+        placed.row === currentRow && placed.col === col
+      );
+      
+      if (alreadyOccupied) {
+        console.log(`Column ${col}: Position [${currentRow},${col}] already has a block, skipping`);
+        currentRow--;
+        continue;
+      }
+      
+      // Take the lowest block first (for better visual appearance)
+      const lowestBlockIndex = regularBlocks.reduce((lowestIdx, block, idx) => {
+        if (lowestIdx === -1 || block.position.row > regularBlocks[lowestIdx].position.row) {
+          return idx;
+        }
+        return lowestIdx;
+      }, -1);
+      
+      const nextBlock = regularBlocks.splice(lowestBlockIndex, 1)[0];
+      const originalPosition = nextBlock.position;
+      const { position, ...blockProps } = nextBlock;
+      
+      // Generate a unique ID for this block for tracking
+      const blockId = `regular-${originalPosition.row}-${originalPosition.col}-${Date.now()}`;
+      
+      console.log(`Column ${col}: Moving block from [${originalPosition.row},${originalPosition.col}] to [${currentRow},${col}] with ID ${blockId}`);
+      
+      // Create a completely new block object to avoid reference issues
+      newGrid[currentRow][col] = {
+        ...blockProps,
+        moved: originalPosition.row !== currentRow,
+        falling: originalPosition.row !== currentRow,
+        originalRow: originalPosition.row,
+        needsNewBlock: false,
+        uniqueId: blockId
+      };
+      
+      filledCount++;
+      currentRow--;
+    }
+    
+    // Any empty positions at the top will get new blocks
+    let emptySpaces = 0;
+    for (let row = 0; row < numRows; row++) {
+      if (newGrid[row][col].needsNewBlock) {
+        emptySpaces++;
+      }
+    }
+    
+    console.log(`Column ${col}: Placed ${filledCount} blocks, left ${emptySpaces} empty spaces for new blocks`);
   }
   
   console.log("AFTER GRAVITY - Grid structure:", 
@@ -449,26 +573,89 @@ export function addNewBlocks(grid, numRows, numCols, numColors) {
   console.log("BEFORE ADDING NEW BLOCKS - Grid structure:", 
     JSON.stringify(newGrid.map(row => row.map(cell => cell.color))));
   
-  // Check each column for empty cells at the top
+  // Step 1: First count how many empty cells need new blocks in each column
+  const emptyCountByColumn = {};
   for (let col = 0; col < numCols; col++) {
+    emptyCountByColumn[col] = 0;
     for (let row = 0; row < numRows; row++) {
-      // If there's an empty cell, fill it with a new random block
-      if (newGrid[row][col].color === -1 || newGrid[row][col].isEmpty) {
+      if ((newGrid[row][col].color === -1 || newGrid[row][col].isEmpty) && 
+          !newGrid[row][col].wasSwapped) { // Skip positions with swapped blocks
+        emptyCountByColumn[col]++;
+      }
+    }
+    console.log(`Column ${col} needs ${emptyCountByColumn[col]} new blocks`);
+  }
+  
+  // Step 2: Add new blocks to empty cells, focusing on cells marked as needsNewBlock
+  let totalNewBlocks = 0;
+  for (let col = 0; col < numCols; col++) {
+    let newBlocksAdded = 0;
+    for (let row = 0; row < numRows; row++) {
+      // Only add a new block if:
+      // 1. The cell is empty
+      // 2. It's not a position with a swapped block (those should be preserved)
+      // 3. It's either explicitly marked as needing a new block OR we haven't filled all empty spaces yet
+      if ((newGrid[row][col].color === -1 || newGrid[row][col].isEmpty) && 
+          !newGrid[row][col].wasSwapped &&
+          (newGrid[row][col].needsNewBlock || newGrid[row][col].wasWhiteSpace)) {
+        
         // Generate a random color for the new block
         const newColor = Math.floor(Math.random() * numColors);
         
         console.log(`Adding new block at [${row},${col}] with color ${newColor}`);
         
-        // Create a new block with the isNew flag for visual feedback
+        // Create a new block with isNew flag and unique ID
         newGrid[row][col] = {
           color: newColor,
           matched: false,
           selected: false,
           isEmpty: false,
-          isNew: true // Mark as new for animation
+          isNew: true, // Mark as new for animation
+          id: `new-${row}-${col}-${Date.now()}`, // Add unique ID for tracking
+          fromColumn: col // Track which column this block belongs to
+        };
+        
+        newBlocksAdded++;
+        totalNewBlocks++;
+      }
+    }
+    
+    console.log(`Added ${newBlocksAdded} new blocks to column ${col}`);
+    
+    // Verify we added the right number of blocks
+    if (newBlocksAdded !== emptyCountByColumn[col]) {
+      console.warn(`Warning: Column ${col} needed ${emptyCountByColumn[col]} blocks but added ${newBlocksAdded}`);
+    }
+  }
+  
+  console.log(`Total new blocks added: ${totalNewBlocks}`);
+  
+  // Final validation: Make sure we don't have any empty cells left
+  let remainingEmpty = 0;
+  for (let row = 0; row < numRows; row++) {
+    for (let col = 0; col < numCols; col++) {
+      if ((newGrid[row][col].color === -1 || newGrid[row][col].isEmpty) && 
+          !newGrid[row][col].wasSwapped) {
+        console.warn(`Warning: Cell at [${row},${col}] is still empty after adding new blocks!`);
+        remainingEmpty++;
+        
+        // Emergency fix - fill it with a random block
+        const emergencyColor = Math.floor(Math.random() * numColors);
+        newGrid[row][col] = {
+          color: emergencyColor,
+          matched: false,
+          selected: false,
+          isEmpty: false,
+          isNew: true,
+          isEmergencyBlock: true, // Mark it specially
+          id: `emergency-${row}-${col}-${Date.now()}`
         };
       }
     }
+  }
+  
+  if (remainingEmpty > 0) {
+    console.warn(`Had to add ${remainingEmpty} emergency blocks to fill remaining empty cells`);
   }
   
   console.log("AFTER ADDING NEW BLOCKS - Grid structure:", 
@@ -495,12 +682,76 @@ export function removeMatches(grid, matches, numRows, numCols, numColors) {
   console.log("BEFORE MATCH - Grid structure:", 
     JSON.stringify(grid.map(row => row.map(cell => cell.color))));
   
-  // Mark matched cells as empty
+  // Create a list of all matched positions for easy lookup
+  const matchedPositions = [];
+  matches.forEach(match => {
+    match.forEach(pos => {
+      matchedPositions.push(pos);
+    });
+  });
+  
+  console.log(`Total matched positions: ${matchedPositions.length}`);
+  
+  // Track which blocks were part of a recent swap and are matched
+  const swappedMatchedBlocks = [];
+  
+  // Before processing matches, mark which blocks are involved in swaps and matches
+  matches.forEach(match => {
+    match.forEach(pos => {
+      if (newGrid[pos.row] && newGrid[pos.row][pos.col] && newGrid[pos.row][pos.col].wasSwapped) {
+        console.log(`⚠️ PRE-MARKING: Swapped block at [${pos.row},${pos.col}] will be matched`);
+        
+        // Mark the block as both swapped and matched
+        newGrid[pos.row][pos.col].wasMatched = true;
+        
+        // If this block has a swap partner, mark the relationship
+        if (newGrid[pos.row][pos.col].swapPartner) {
+          const partner = newGrid[pos.row][pos.col].swapPartner;
+          console.log(`Found swap partner at [${partner.row},${partner.col}]`);
+          
+          // Check if the partner exists
+          if (newGrid[partner.row] && newGrid[partner.row][partner.col]) {
+            // Mark the partner with a special flag to indicate its partner was matched
+            newGrid[partner.row][partner.col].partnerWasMatched = true;
+          }
+        }
+      }
+    });
+  });
+  
+  // Now mark matched cells as empty
   matches.forEach((match, matchIndex) => {
     console.log(`Applying match ${matchIndex+1} (${match.length} blocks):`);
     match.forEach(pos => {
       if (newGrid[pos.row] && newGrid[pos.row][pos.col]) {
+        // Check if this block was recently swapped
+        if (newGrid[pos.row][pos.col].wasSwapped) {
+          console.log(`⚠️ CRITICAL: Swapped block at [${pos.row},${pos.col}] is part of a match!`);
+          swappedMatchedBlocks.push({
+            row: pos.row,
+            col: pos.col,
+            swapPartner: newGrid[pos.row][pos.col].swapPartner,
+            isSourceBlock: true
+          });
+          
+          // If this block has a partner, store that too
+          if (newGrid[pos.row][pos.col].swapPartner) {
+            const partner = newGrid[pos.row][pos.col].swapPartner;
+            swappedMatchedBlocks.push({
+              row: partner.row,
+              col: partner.col,
+              swapPartner: { row: pos.row, col: pos.col },
+              isPartnerBlock: true
+            });
+          }
+        }
+        
         console.log(`  - Removing block at [${pos.row},${pos.col}] with color ${newGrid[pos.row][pos.col].color}`);
+        
+        // Store information about whether this block was swapped
+        const wasSwapped = newGrid[pos.row][pos.col].wasSwapped || false;
+        const swapPartner = newGrid[pos.row][pos.col].swapPartner || null;
+        
         // Mark cell as empty with a special visual state for debugging
         newGrid[pos.row][pos.col] = {
           color: -1, // -1 indicates empty
@@ -508,7 +759,11 @@ export function removeMatches(grid, matches, numRows, numCols, numColors) {
           isNew: false,
           selected: false,
           isEmpty: true, // New flag to indicate empty for rendering
-          matchedTime: Date.now() // Add timestamp for staggered animation
+          wasMatched: true, // Indicate this was a matched position
+          matchedTime: Date.now(), // Add timestamp for staggered animation
+          // Keep swap information for the gravity algorithm
+          wasSwapped: wasSwapped,
+          swapPartner: swapPartner
         };
       }
     });
@@ -517,7 +772,18 @@ export function removeMatches(grid, matches, numRows, numCols, numColors) {
   console.log("AFTER MATCH - Grid with empty cells:", 
     JSON.stringify(newGrid.map(row => row.map(cell => cell.color))));
   
-  // Apply gravity to make blocks fall into empty spaces
+  // Clear all wasSwapped flags from the grid before applying gravity
+  for (let row = 0; row < numRows; row++) {
+    for (let col = 0; col < numCols; col++) {
+      if (newGrid[row][col].wasSwapped) {
+        console.log(`Clearing wasSwapped flag at [${row},${col}]`);
+        delete newGrid[row][col].wasSwapped;
+        delete newGrid[row][col].swapPartner;
+      }
+    }
+  }
+  
+  // Apply gravity to make blocks fall into empty spaces using improved algorithm
   const gridWithGravity = applyGravity(newGrid, numRows, numCols);
   
   // Mark all falling blocks with unique timestamps for staggered animation
@@ -535,13 +801,17 @@ export function removeMatches(grid, matches, numRows, numCols, numColors) {
   const gridWithNewBlocks = addNewBlocks(gridWithGravity, numRows, numCols, numberOfColors);
   
   // Mark new blocks with unique timestamps for staggered animation
+  let newBlockCount = 0;
   for (let i = 0; i < numRows; i++) {
     for (let j = 0; j < numCols; j++) {
       if (gridWithNewBlocks[i][j].isNew) {
         gridWithNewBlocks[i][j].newTime = Date.now() + (j * 50); // Stagger by column
+        gridWithNewBlocks[i][j].id = `new-${i}-${j}-${Date.now()}`; // Add unique ID for tracking
+        newBlockCount++;
       }
     }
   }
+  console.log(`Added ${newBlockCount} new blocks with unique IDs`);
   
   return gridWithNewBlocks;
 }

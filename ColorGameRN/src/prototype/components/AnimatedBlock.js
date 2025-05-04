@@ -21,24 +21,51 @@ const AnimatedBlock = ({
   const scale = useRef(new Animated.Value(isNew ? 0 : 1)).current;
   const opacity = useRef(new Animated.Value(isNew ? 0 : 1)).current;
 
-  // Handle new blocks appearing
+  // Handle initial setup and reset when the ID changes
   useEffect(() => {
+    // When a block gets a new ID, it's a completely new block
+    // This is the most important reset - must happen on every ID change
+    
+    // Reset position immediately
+    translateX.setValue(0);
+    translateY.setValue(0);
+    
+    // New blocks need to animate in from nothing
     if (isNew) {
-      // Animate new blocks appearing
-      Animated.parallel([
-        Animated.timing(scale, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      // Stop any ongoing animations first
+      scale.stopAnimation();
+      opacity.stopAnimation();
+      
+      // Set initial values - start invisible
+      scale.setValue(0);
+      opacity.setValue(0);
+      
+      // Brief delay to ensure layout is complete
+      const animationTimeout = setTimeout(() => {
+        // Animate new blocks appearing
+        Animated.parallel([
+          Animated.timing(scale, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(opacity, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      }, 50);
+      
+      return () => {
+        clearTimeout(animationTimeout);
+      };
+    } else {
+      // Existing blocks should be fully visible
+      scale.setValue(1);
+      opacity.setValue(1);
     }
-  }, [isNew]);
+  }, [id, isNew]);
 
   // Handle selection animation
   useEffect(() => {
@@ -87,72 +114,96 @@ const AnimatedBlock = ({
     }
   }, [matched]);
   
-  // Handle swap animation with a comprehensive approach
+  // Handle swap animation - completely revised
   useEffect(() => {
-    // Reset animation values when a new component is rendered
-    const resetAnimations = () => {
-      translateX.setValue(0);
-      translateY.setValue(0);
-    };
-    
-    // When component mounts, reset animations
-    resetAnimations();
-    
-    // Special case: if this is a matched block, don't animate it back
+    // Skip all animations for matched blocks
     if (matched) {
       return;
     }
     
-    // For swapping animation
-    if (swapDirection) {
-      const distance = size; // Move the full size of a block
-      
-      // Set target based on direction
-      let xTarget = 0;
-      let yTarget = 0;
-      
-      // Determine the direction
-      const isForwardSwap = ['right', 'down'].includes(swapDirection);
-      const isHorizontal = ['right', 'left'].includes(swapDirection);
-      
-      // Set the correct distance based on direction
-      if (isHorizontal) {
-        xTarget = isForwardSwap ? distance : -distance;
-      } else {
-        yTarget = isForwardSwap ? distance : -distance;
-      }
-      
-      // Immediately set the animation values to their starting positions
-      translateX.setValue(0);
-      translateY.setValue(0);
-      
-      // Then animate to the target
-      Animated.parallel([
-        Animated.timing(translateX, {
-          toValue: xTarget,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(translateY, {
-          toValue: yTarget,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    } else {
-      // When swapDirection is cleared and block is not matched, 
-      // reset animations to initial state
-      translateX.setValue(0);
-      translateY.setValue(0);
+    // Skip animations for new blocks
+    if (isNew) {
+      return;
     }
     
-    // Cleanup function
+    // Reference to animation to allow cleanup
+    let animationRef = { current: null };
+    
+    // Function to handle the animation
+    const animateBlock = () => {
+      // Stop any ongoing animations
+      translateX.stopAnimation();
+      translateY.stopAnimation();
+      
+      // The direction determines the target position
+      if (swapDirection) {
+        const distance = size;
+        let xTarget = 0;
+        let yTarget = 0;
+        
+        // Set the right distance based on direction
+        if (swapDirection === 'right') xTarget = distance;
+        else if (swapDirection === 'left') xTarget = -distance;
+        else if (swapDirection === 'down') yTarget = distance;
+        else if (swapDirection === 'up') yTarget = -distance;
+        
+        // Always start from position 0,0
+        translateX.setValue(0);
+        translateY.setValue(0);
+        
+        // Create a single animation for the swap
+        animationRef.current = Animated.parallel([
+          Animated.timing(translateX, {
+            toValue: xTarget,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+          Animated.timing(translateY, {
+            toValue: yTarget,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+        ]);
+        
+        // Start the animation
+        animationRef.current.start();
+      } else {
+        // If no direction, ensure we're at position 0,0
+        // Use immediate setValue instead of animation to avoid conflicts
+        translateX.setValue(0);
+        translateY.setValue(0);
+      }
+    };
+    
+    // Run the animation
+    animateBlock();
+    
+    // Cleanup function to stop animations when unmounting or when dependencies change
     return () => {
-      // Reset animation values when component unmounts or swapDirection changes
+      if (animationRef.current) {
+        animationRef.current.stop();
+      }
+      
+      // Ensure values are reset when the effect is cleaned up
       translateX.setValue(0);
       translateY.setValue(0);
     };
-  }, [swapDirection, size, matched, translateX, translateY]);
+  }, [swapDirection, size, matched, isNew, translateX, translateY]);
+  
+  // Ensure scale/opacity are properly reset when selection changes
+  useEffect(() => {
+    // No animation for matched blocks
+    if (matched) return;
+    
+    // Reset scale to normal if not selected
+    if (!selected) {
+      Animated.timing(scale, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [selected, matched, scale]);
 
   // Determine background and border colors based on the provided color
   const backgroundColor = color.backgroundColor || color;
