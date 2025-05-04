@@ -19,14 +19,7 @@ export default class Match3Board extends Component {
       levelCompleted: false
     };
     
-    // No need for enums - we directly detect horizontal and vertical swipes
-    
-    // Track touch events for swipe detection
-    this.touchStartTime = 0;
-    this.touchStartX = -1; // -1 indicates no touch in progress
-    this.touchStartY = -1; // -1 indicates no touch in progress
-    this.currentBlockRow = -1;
-    this.currentBlockCol = -1;
+    // No touch tracking needed - using simplified tap-based swapping
   }
 
   // Check if position is within grid bounds
@@ -324,73 +317,73 @@ export default class Match3Board extends Component {
     );
   }
   
-  // Touch event handlers for simplified swipe detection
-  handleBlockTouchStart(row, col) {
-    console.log(`Touch started at [${row},${col}]`);
+  // Simplified approach - no more complex swipe detection
+  // Just direct handling of block selection and swaps
+  handleBlockPress(row, col) {
+    console.log(`Block pressed at [${row},${col}]`);
     
-    // Ignore if game is over
-    if (this.state.gameOver) return;
-    
-    // Store the starting position and time
-    this.touchStartTime = Date.now();
-    this.touchStartX = col;
-    this.touchStartY = row;
-    this.currentBlockRow = row;
-    this.currentBlockCol = col;
-    
-    // This will highlight the block as selected
-    this.handleBlockTap(row, col);
-  }
-  
-  handleBlockTouchEnd(row, col) {
-    console.log(`Touch ended at [${row},${col}]`);
-    
-    // Ignore if game is over or no starting position
-    if (this.state.gameOver || this.touchStartX === -1 || this.touchStartY === -1) return;
-    
-    // Calculate horizontal and vertical distance
-    const dX = col - this.touchStartX;
-    const dY = row - this.touchStartY;
-    
-    // Only process if there's a meaningful movement (adjacent block)
-    if (Math.abs(dX) === 1 && dY === 0) {
-      // Horizontal swipe
-      console.log(`Horizontal swipe detected from [${this.touchStartY},${this.touchStartX}] to [${this.touchStartY},${this.touchStartX + dX}]`);
-      
-      // Check with areAdjacent to verify we're passing correct coordinates
-      const isAdj = match3Helpers.areAdjacent(
-        this.touchStartY, this.touchStartX, 
-        this.touchStartY, this.touchStartX + dX
-      );
-      console.log(`Are blocks adjacent? ${isAdj}`);
-      
-      this.processSwap(this.touchStartY, this.touchStartX, this.touchStartY, this.touchStartX + dX);
-    } else if (Math.abs(dY) === 1 && dX === 0) {
-      // Vertical swipe
-      console.log(`Vertical swipe detected from [${this.touchStartY},${this.touchStartX}] to [${this.touchStartY + dY},${this.touchStartX}]`);
-      
-      // Check with areAdjacent to verify we're passing correct coordinates
-      const isAdj = match3Helpers.areAdjacent(
-        this.touchStartY, this.touchStartX, 
-        this.touchStartY + dY, this.touchStartX
-      );
-      console.log(`Are blocks adjacent? ${isAdj}`);
-      
-      this.processSwap(this.touchStartY, this.touchStartX, this.touchStartY + dY, this.touchStartX);
-    } else if (row === this.touchStartY && col === this.touchStartX) {
-      // Tap on the same block - this is already handled by handleBlockTap
-      console.log('Same block tap detected - already handled');
-    } else {
-      // Not a valid swipe, but a tap on a different block
-      console.log(`Not a valid swipe, but a tap on block [${row},${col}]`);
-      this.handleBlockTap(row, col);
+    // If game is over, don't allow more moves
+    if (this.state.gameOver) {
+      console.log("Game is over, ignoring press");
+      return;
     }
     
-    // Reset touch tracking
-    this.touchStartX = -1;
-    this.touchStartY = -1;
-    this.currentBlockRow = -1;
-    this.currentBlockCol = -1;
+    const { grid } = this.props.game;
+    const { numberofrows } = this.props;
+    
+    // Make sure coordinates are valid
+    if (row < 0 || row >= numberofrows || col < 0 || col >= numberofrows) {
+      console.log("Invalid coordinates, ignoring press");
+      return;
+    }
+    
+    // Clone the grid for updates
+    let newGrid = grid.map(row => [...row]);
+    
+    // If no block is selected yet, select this one
+    if (!this.firstSelectedBlock) {
+      console.log("First block selected");
+      newGrid[row][col].selected = true;
+      this.firstSelectedBlock = { row, col };
+      this.props.createGrid(newGrid);
+      return;
+    }
+    
+    // Get previous selection
+    const { row: firstRow, col: firstCol } = this.firstSelectedBlock;
+    
+    // If the same block is tapped twice, deselect it
+    if (firstRow === row && firstCol === col) {
+      console.log("Same block tapped twice, deselecting");
+      newGrid[row][col].selected = false;
+      this.firstSelectedBlock = null;
+      this.props.createGrid(newGrid);
+      return;
+    }
+    
+    // Check if blocks are adjacent
+    const isAdjacent = match3Helpers.areAdjacent(firstRow, firstCol, row, col);
+    
+    // First, always clear the selection in UI
+    newGrid[firstRow][firstCol].selected = false;
+    this.props.createGrid(newGrid);
+    
+    if (isAdjacent) {
+      console.log("Adjacent block selected, attempting swap");
+      
+      // Process the swap
+      this.processSwap(firstRow, firstCol, row, col);
+      
+      // Reset selection state
+      this.firstSelectedBlock = null;
+    } else {
+      console.log("Non-adjacent block selected, changing selection");
+      
+      // Select the new block instead
+      newGrid[row][col].selected = true;
+      this.firstSelectedBlock = { row, col };
+      this.props.createGrid(newGrid);
+    }
   }
   
   componentWillUnmount() {
@@ -416,74 +409,7 @@ export default class Match3Board extends Component {
     }
   }
   
-  handleBlockTap(row, col) {
-    const { grid } = this.props.game;
-    const { numberofrows } = this.props;
-    
-    console.log(`Tapped block at row ${row}, col ${col}`);
-    
-    // If game is over, don't allow more moves
-    if (this.state.gameOver) {
-      console.log("Game is over, ignoring tap");
-      return;
-    }
-    
-    // Make sure coordinates are valid
-    if (row < 0 || row >= numberofrows || col < 0 || col >= numberofrows) {
-      console.log("Invalid coordinates, ignoring tap");
-      return;
-    }
-    
-    // Clone the grid - use direct copy for React Native/Hermes compatibility
-    let newGrid = grid.map(row => [...row]);
-    
-    // If this is the first block selected
-    if (!this.firstSelectedBlock) {
-      console.log("First block selected");
-      // Mark this block as selected
-      newGrid[row][col].selected = true;
-      this.firstSelectedBlock = { row, col };
-      
-      // Update the grid
-      this.props.createGrid(newGrid);
-      return;
-    }
-    
-    // If this is the second block selected
-    const { row: firstRow, col: firstCol } = this.firstSelectedBlock;
-    console.log(`Second block selected. Comparing with first block at row ${firstRow}, col ${firstCol}`);
-    
-    // If the same block is tapped twice, just deselect it
-    if (firstRow === row && firstCol === col) {
-      console.log("Same block tapped twice, deselecting");
-      newGrid[row][col].selected = false;
-      this.firstSelectedBlock = null;
-      this.props.createGrid(newGrid);
-      return;
-    }
-    
-    // Check if the blocks are adjacent
-    const isAdjacent = match3Helpers.areAdjacent(firstRow, firstCol, row, col);
-    
-    if (!isAdjacent) {
-      console.log("Blocks are not adjacent, selecting new block instead");
-      // If they're not adjacent, deselect the first and select the new one
-      newGrid[firstRow][firstCol].selected = false;
-      newGrid[row][col].selected = true;
-      this.firstSelectedBlock = { row, col };
-      this.props.createGrid(newGrid);
-      return;
-    }
-    
-    // Clear selection state (deselect both blocks)
-    newGrid[firstRow][firstCol].selected = false;
-    newGrid[row][col].selected = false;
-    this.props.createGrid(newGrid);
-    
-    // Reset first selected block and process the swap
-    this.firstSelectedBlock = null;
-    this.processSwap(firstRow, firstCol, row, col);
-  }
+  // Removed handleBlockTap and replaced with handleBlockPress above
   
   // Handle level completion 
   handleLevelComplete() {
@@ -661,12 +587,8 @@ export default class Match3Board extends Component {
     
     console.log(`Rendering blocks with ${rows}x${rows} grid, blockSize: ${100/rows}%`);
     
-    // Adjust padding for larger grids
-    if (rows > 6) {
-      styles.blockContainer.padding = 1;
-    } else {
-      styles.blockContainer.padding = 2;
-    }
+    // Keep consistent padding across all grid sizes for visual consistency
+    // Original Block.js uses padding: 2 consistently
     
     // Create the block components
     for (let i = 0; i < rows; i++) {
@@ -720,26 +642,23 @@ export default class Match3Board extends Component {
           styles.outerCircle,
           { 
             backgroundColor: borderColor,
-            borderWidth: 0, // Default to no border
           }
         ];
         
-        // Adjust circle size for larger grids
-        let innerCircleSize = '80%';
-        if (rows > 6) {
-          innerCircleSize = '90%'; // Make inner circle larger on bigger grids to use more space
-        }
-        
         // For selected blocks, use a solid white border
         if (cell.selected) {
-          outerCircleStyle.push(styles.selectedOuterCircle);
           borderColor = '#FFFFFF'; // Solid white border
+          outerCircleStyle = [
+            styles.outerCircle,
+            { backgroundColor: '#FFFFFF' } // White border for selected blocks
+          ];
         }
         
+        // Style for matched blocks
         if (cell.matched) {
           stateStyles.push(styles.matchedBlock);
-          // For matched blocks, make it a solid color by making the inner circle fill the outer circle
-          backgroundColor = borderColor; // Make outer circle same as inner
+          // For matched blocks, make both circles same color for solid appearance
+          backgroundColor = borderColor;
         }
         
         if (cell.isNew) {
@@ -762,12 +681,14 @@ export default class Match3Board extends Component {
               styles.blockSize,
               ...stateStyles
             ]}
-            onPressIn={() => this.handleBlockTouchStart(i, j)}
-            onPressOut={() => this.handleBlockTouchEnd(i, j)}
-            // Include row/col data directly in the component
-            // This avoids coordinate mapping issues
+            onPress={() => this.handleBlockPress(i, j)}
+            activeOpacity={0.7} // Give visual feedback when pressed
+            // For clarity and direct navigation
             row={i}
             col={j}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={`Color block at row ${i+1}, column ${j+1}`}
           >
             <View 
               style={outerCircleStyle}
@@ -777,10 +698,9 @@ export default class Match3Board extends Component {
                   styles.innerCircle,
                   { 
                     backgroundColor: backgroundColor,
-                    borderWidth: 0, // Explicitly prevent border
                     // For matched blocks, make inner circle fill the entire outer circle
-                    width: cell.matched ? '100%' : innerCircleSize,
-                    height: cell.matched ? '100%' : innerCircleSize,
+                    width: cell.matched ? '100%' : '80%',
+                    height: cell.matched ? '100%' : '80%',
                   }
                 ]}
               />
@@ -855,9 +775,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.05)', // Empty spaces with subtle visibility
   },
   
-  // Block styling
+  // Block styling - matched with original Block.js
   blockContainer: {
-    padding: 1, // Smaller padding for 8x8 grid
+    padding: 2, // Match original padding
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'visible', // Ensure we don't clip blocks
@@ -868,25 +788,18 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 0, // Explicitly remove any border
-    overflow: 'hidden', // Make sure content doesn't overflow
   },
   innerCircle: {
-    width: '90%', // Larger for 8x8 grid
-    height: '90%', // Larger for 8x8 grid
+    width: '80%', // Match original size
+    height: '80%', // Match original size
     borderRadius: 999,
-    borderWidth: 0, // Explicitly remove any border
   },
   
   // Block states
   selectedBlock: {
     zIndex: 5, // Just keep the z-index to ensure proper stacking
   },
-  // Solid white border for selected blocks
-  selectedOuterCircle: {
-    borderWidth: 3,
-    borderColor: '#FFFFFF',
-  },
+  // Using background color for borders instead of explicit border
   matchedBlock: {
     // Style for matched blocks - solid color appearance with a slightly reduced scale
     opacity: 1.0, // Full opacity
