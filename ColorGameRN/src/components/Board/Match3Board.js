@@ -18,6 +18,256 @@ export default class Match3Board extends Component {
       matchesMade: 0,
       levelCompleted: false
     };
+    
+    // No need for enums - we directly detect horizontal and vertical swipes
+    
+    // Track touch events for swipe detection
+    this.touchStartTime = 0;
+    this.touchStartX = -1; // -1 indicates no touch in progress
+    this.touchStartY = -1; // -1 indicates no touch in progress
+    this.currentBlockRow = -1;
+    this.currentBlockCol = -1;
+  }
+
+  // Check if position is within grid bounds
+  isValidPosition(row, col) {
+    const rows = this.props.numberofrows;
+    return row >= 0 && row < rows && col >= 0 && col < rows;
+  }
+
+  // Process the swap between two blocks
+  // Process matches found after a move
+  processMatchesFound(matches, newGrid) {
+    console.log("Processing matches - with visual steps");
+    
+    // Calculate score with level multiplier
+    const scoreGain = match3Helpers.calculateScore(matches, 1.0, this.props.game.level);
+    const newScore = this.props.game.score + scoreGain;
+    console.log(`Score increased by ${scoreGain} to ${newScore} (level ${this.props.game.level})`);
+    this.props.updateScore(newScore);
+    
+    // Update matchesMade counter (both in local state and Redux)
+    const newMatchesMade = this.state.matchesMade + matches.length;
+    console.log(`Before update - Local matches: ${this.state.matchesMade}, Redux matches: ${this.props.game.matchesMade}`);
+    this.setState({ matchesMade: newMatchesMade });
+    if (this.props.updateMatchesMade) {
+      console.log(`Updating Redux with ${newMatchesMade} matches`);
+      this.props.updateMatchesMade(newMatchesMade);
+    } else {
+      console.error('updateMatchesMade is undefined');
+    }
+    console.log(`Made ${matches.length} matches. Total: ${newMatchesMade}/${this.props.level.matchGoal}`);
+    
+    // STEP 1: First highlight the matched blocks
+    const highlightedGrid = JSON.parse(JSON.stringify(newGrid)); // Deep clone to avoid reference issues
+    
+    // Mark the matched blocks
+    matches.forEach(match => {
+      match.forEach(pos => {
+        if (highlightedGrid[pos.row] && highlightedGrid[pos.row][pos.col]) {
+          highlightedGrid[pos.row][pos.col].matched = true;
+        }
+      });
+    });
+    
+    // Update grid to show highlighted matches
+    this.props.createGrid(highlightedGrid);
+    
+    // STEP 2: After delay, remove matched blocks and replace with white
+    setTimeout(() => {
+      console.log("STEP 2: Removing matched blocks");
+      const removedGrid = JSON.parse(JSON.stringify(highlightedGrid));
+      
+      // Remove matched blocks and replace with white spaces
+      matches.forEach(match => {
+        match.forEach(pos => {
+          if (removedGrid[pos.row] && removedGrid[pos.row][pos.col]) {
+            // Replace with white empty block
+            removedGrid[pos.row][pos.col] = {
+              color: -1,
+              isEmpty: true,
+              isWhiteSpace: true // Special flag for rendering as white
+            };
+          }
+        });
+      });
+      
+      // Update grid to show white spaces
+      this.props.createGrid(removedGrid);
+      
+      // STEP 3: After another delay, apply gravity and add new blocks
+      setTimeout(() => {
+        console.log("STEP 3: Applying gravity");
+        
+        // Create a new grid for the final state
+        const gravityGrid = JSON.parse(JSON.stringify(removedGrid));
+        const numberofrows = this.props.numberofrows;
+        
+        // Apply gravity - shift blocks down to fill empty spaces
+        for (let col = 0; col < numberofrows; col++) {
+          // Collect all non-empty blocks in the column
+          const colBlocks = [];
+          for (let row = 0; row < numberofrows; row++) {
+            if (!gravityGrid[row][col].isEmpty && gravityGrid[row][col].color !== -1) {
+              colBlocks.push(gravityGrid[row][col]);
+            }
+          }
+          
+          // Fill from bottom up
+          for (let row = numberofrows - 1; row >= 0; row--) {
+            if (colBlocks.length > 0) {
+              // Place a block from our collection
+              gravityGrid[row][col] = colBlocks.pop();
+            } else {
+              // No more blocks, fill with empty
+              gravityGrid[row][col] = {
+                color: -1,
+                isEmpty: true
+              };
+            }
+          }
+        }
+        
+        // Show the blocks after gravity is applied
+        this.props.createGrid(gravityGrid);
+        
+        // STEP 4: After delay, add new blocks
+        setTimeout(() => {
+          console.log("STEP 4: Adding new blocks");
+          
+          // Create a grid with new blocks
+          const finalGrid = JSON.parse(JSON.stringify(gravityGrid));
+          
+          // Add new blocks at the top where empty
+          for (let row = 0; row < numberofrows; row++) {
+            for (let col = 0; col < numberofrows; col++) {
+              if (finalGrid[row][col].isEmpty || finalGrid[row][col].color === -1) {
+                // Create a new random block
+                finalGrid[row][col] = {
+                  color: Math.floor(Math.random() * this.props.numberofcolors),
+                  isNew: true
+                };
+              }
+            }
+          }
+          
+          // Update the grid with final state
+          this.props.createGrid(finalGrid);
+          
+          // STEP 5: Check for cascade matches
+          setTimeout(() => {
+            console.log("STEP 5: Checking for cascade matches");
+            
+            const cascadeMatches = match3Helpers.checkMatches(
+              finalGrid,
+              numberofrows,
+              numberofrows
+            );
+            
+            if (cascadeMatches.length > 0) {
+              console.log(`Found ${cascadeMatches.length} cascade matches`);
+              
+              // Process cascade matches
+              this.processCascadeMatches(finalGrid, newScore);
+            } else {
+              // No cascade matches, so we can check for level completion
+              if (this.state.matchesMade >= this.props.level.matchGoal && !this.state.levelCompleted) {
+                console.log("No cascade matches. Checking level completion.");
+                this.setState({ levelCompleted: true }, () => {
+                  // Wait a bit before showing completion
+                  setTimeout(() => {
+                    this.handleLevelComplete();
+                  }, styles.delayMedium);
+                });
+              }
+            }
+          }, styles.delayShort);
+          
+        }, styles.delayMedium); // Delay before adding new blocks
+        
+      }, styles.delayMedium); // Delay before applying gravity
+      
+    }, styles.delayShort); // Delay before removing matched blocks
+  }
+
+  processSwap(row1, col1, row2, col2) {
+    // Check if blocks are adjacent
+    if (!match3Helpers.areAdjacent(row1, col1, row2, col2)) {
+      console.log("Blocks are not adjacent, ignoring swap");
+      return;
+    }
+
+    console.log(`Processing swap between [${row1},${col1}] and [${row2},${col2}]`);
+    
+    const { grid } = this.props.game;
+    const { numberofrows } = this.props;
+    
+    // Clone the grid - use direct copy for React Native/Hermes compatibility
+    let newGrid = grid.map(row => [...row]);
+    
+    // Swap the blocks
+    newGrid = match3Helpers.swapBlocks(
+      newGrid,
+      row1, col1,
+      row2, col2
+    );
+    
+    // Increment move counter
+    const newMoves = this.state.moves + 1;
+    this.setState({ moves: newMoves });
+    
+    // Update the clicks in Redux (for moves limit display)
+    this.props.updateClicks(newMoves);
+    
+    // Check for matches
+    const matches = match3Helpers.checkMatches(
+      newGrid,
+      numberofrows,
+      numberofrows
+    );
+    
+    console.log(`Found ${matches.length} matches after swap`);
+    
+    if (matches.length > 0) {
+      // Process matches using our unified method
+      this.processMatchesFound(matches, newGrid);
+    } else {
+      // If no matches after swap, swap blocks back
+      console.log("No matches found, swapping back");
+      
+      newGrid = match3Helpers.swapBlocks(
+        newGrid,
+        row2, col2,
+        row1, col1
+      );
+      this.props.createGrid(newGrid);
+    }
+    
+    // Check if game is over (reached move limit)
+    if (this.state.moves >= this.props.level.moveLimit) {
+      this.setState({ gameOver: true });
+      this.props.didWin(false);
+      
+      // Show game over alert
+      Alert.alert(
+        "Level Failed",
+        `You've used all ${this.props.level.moveLimit} moves!\nYou made ${this.state.matchesMade}/${this.props.level.matchGoal} matches.\nFinal Score: ${this.props.game.score}`,
+        [
+          { 
+            text: "Try Again", 
+            onPress: () => {
+              if (this.props.restart) {
+                this.props.restart(true);
+                // We must reinitialize the game state after the restart completes
+                setTimeout(() => {
+                  this.initializeGame();
+                }, styles.delayShort);
+              }
+            }
+          }
+        ]
+      );
+    }
   }
   
   componentDidMount() {
@@ -32,7 +282,7 @@ export default class Match3Board extends Component {
     this.setState({
       moves: 0,
       gameOver: false,
-      potentialMatches: [], // Add this to track potential matches
+      potentialMatches: [], // Track potential matches
       animationPhase: 'idle', // Track current animation phase
       cascadeCount: 0, // Reset cascade counter
       matchesMade: 0, // Reset match counter for level progression
@@ -74,7 +324,74 @@ export default class Match3Board extends Component {
     );
   }
   
-  // No timeout tracking needed with simplified approach
+  // Touch event handlers for simplified swipe detection
+  handleBlockTouchStart(row, col) {
+    console.log(`Touch started at [${row},${col}]`);
+    
+    // Ignore if game is over
+    if (this.state.gameOver) return;
+    
+    // Store the starting position and time
+    this.touchStartTime = Date.now();
+    this.touchStartX = col;
+    this.touchStartY = row;
+    this.currentBlockRow = row;
+    this.currentBlockCol = col;
+    
+    // This will highlight the block as selected
+    this.handleBlockTap(row, col);
+  }
+  
+  handleBlockTouchEnd(row, col) {
+    console.log(`Touch ended at [${row},${col}]`);
+    
+    // Ignore if game is over or no starting position
+    if (this.state.gameOver || this.touchStartX === -1 || this.touchStartY === -1) return;
+    
+    // Calculate horizontal and vertical distance
+    const dX = col - this.touchStartX;
+    const dY = row - this.touchStartY;
+    
+    // Only process if there's a meaningful movement (adjacent block)
+    if (Math.abs(dX) === 1 && dY === 0) {
+      // Horizontal swipe
+      console.log(`Horizontal swipe detected from [${this.touchStartY},${this.touchStartX}] to [${this.touchStartY},${this.touchStartX + dX}]`);
+      
+      // Check with areAdjacent to verify we're passing correct coordinates
+      const isAdj = match3Helpers.areAdjacent(
+        this.touchStartY, this.touchStartX, 
+        this.touchStartY, this.touchStartX + dX
+      );
+      console.log(`Are blocks adjacent? ${isAdj}`);
+      
+      this.processSwap(this.touchStartY, this.touchStartX, this.touchStartY, this.touchStartX + dX);
+    } else if (Math.abs(dY) === 1 && dX === 0) {
+      // Vertical swipe
+      console.log(`Vertical swipe detected from [${this.touchStartY},${this.touchStartX}] to [${this.touchStartY + dY},${this.touchStartX}]`);
+      
+      // Check with areAdjacent to verify we're passing correct coordinates
+      const isAdj = match3Helpers.areAdjacent(
+        this.touchStartY, this.touchStartX, 
+        this.touchStartY + dY, this.touchStartX
+      );
+      console.log(`Are blocks adjacent? ${isAdj}`);
+      
+      this.processSwap(this.touchStartY, this.touchStartX, this.touchStartY + dY, this.touchStartX);
+    } else if (row === this.touchStartY && col === this.touchStartX) {
+      // Tap on the same block - this is already handled by handleBlockTap
+      console.log('Same block tap detected - already handled');
+    } else {
+      // Not a valid swipe, but a tap on a different block
+      console.log(`Not a valid swipe, but a tap on block [${row},${col}]`);
+      this.handleBlockTap(row, col);
+    }
+    
+    // Reset touch tracking
+    this.touchStartX = -1;
+    this.touchStartY = -1;
+    this.currentBlockRow = -1;
+    this.currentBlockCol = -1;
+  }
   
   componentWillUnmount() {
     // Nothing to clean up now that we've simplified
@@ -158,223 +475,14 @@ export default class Match3Board extends Component {
       return;
     }
     
-    // Swap the blocks - this handles deselection too
-    newGrid = match3Helpers.swapBlocks(
-      newGrid,
-      firstRow, firstCol,
-      row, col
-    );
+    // Clear selection state (deselect both blocks)
+    newGrid[firstRow][firstCol].selected = false;
+    newGrid[row][col].selected = false;
+    this.props.createGrid(newGrid);
     
-    // Clear selection state
+    // Reset first selected block and process the swap
     this.firstSelectedBlock = null;
-    
-    // Increment move counter
-    const newMoves = this.state.moves + 1;
-    this.setState({ moves: newMoves });
-    
-    // Update the clicks in Redux (for moves limit display)
-    this.props.updateClicks(newMoves);
-    
-    // Check for matches
-    const matches = match3Helpers.checkMatches(
-      newGrid,
-      numberofrows,
-      numberofrows
-    );
-    
-    console.log(`Found ${matches.length} matches after swap`);
-    
-    if (matches.length > 0) {
-      console.log("Processing matches - with visual steps");
-      
-      // Calculate score with level multiplier
-      const scoreGain = match3Helpers.calculateScore(matches, 1.0, this.props.game.level);
-      const newScore = this.props.game.score + scoreGain;
-      console.log(`Score increased by ${scoreGain} to ${newScore} (level ${this.props.game.level})`);
-      this.props.updateScore(newScore);
-      
-      // Update matchesMade counter (both in local state and Redux)
-      const newMatchesMade = this.state.matchesMade + matches.length;
-      console.log(`Before update - Local matches: ${this.state.matchesMade}, Redux matches: ${this.props.game.matchesMade}`);
-      this.setState({ matchesMade: newMatchesMade });
-      if (this.props.updateMatchesMade) {
-        console.log(`Updating Redux with ${newMatchesMade} matches`);
-        this.props.updateMatchesMade(newMatchesMade);
-      } else {
-        console.error('updateMatchesMade is undefined');
-      }
-      console.log(`Made ${matches.length} matches. Total: ${newMatchesMade}/${this.props.level.matchGoal}`);
-      
-      // We'll only check level completion after all cascades are processed
-      // So we don't do anything here
-      
-      // STEP 1: First highlight the matched blocks
-      const highlightedGrid = JSON.parse(JSON.stringify(newGrid)); // Deep clone to avoid reference issues
-      
-      // Mark the matched blocks
-      matches.forEach(match => {
-        match.forEach(pos => {
-          if (highlightedGrid[pos.row] && highlightedGrid[pos.row][pos.col]) {
-            highlightedGrid[pos.row][pos.col].matched = true;
-          }
-        });
-      });
-      
-      // Update grid to show highlighted matches
-      this.props.createGrid(highlightedGrid);
-      
-      // STEP 2: After delay, remove matched blocks and replace with white
-      setTimeout(() => {
-        console.log("STEP 2: Removing matched blocks");
-        const removedGrid = JSON.parse(JSON.stringify(highlightedGrid));
-        
-        // Remove matched blocks and replace with white spaces
-        matches.forEach(match => {
-          match.forEach(pos => {
-            if (removedGrid[pos.row] && removedGrid[pos.row][pos.col]) {
-              // Replace with white empty block
-              removedGrid[pos.row][pos.col] = {
-                color: -1,
-                isEmpty: true,
-                isWhiteSpace: true // Special flag for rendering as white
-              };
-            }
-          });
-        });
-        
-        // Update grid to show white spaces
-        this.props.createGrid(removedGrid);
-        
-        // STEP 3: After another delay, apply gravity and add new blocks
-        setTimeout(() => {
-          console.log("STEP 3: Applying gravity");
-          
-          // Create a new grid for the final state
-          const gravityGrid = JSON.parse(JSON.stringify(removedGrid));
-          
-          // Apply gravity - shift blocks down to fill empty spaces
-          for (let col = 0; col < numberofrows; col++) {
-            // Collect all non-empty blocks in the column
-            const colBlocks = [];
-            for (let row = 0; row < numberofrows; row++) {
-              if (!gravityGrid[row][col].isEmpty && gravityGrid[row][col].color !== -1) {
-                colBlocks.push(gravityGrid[row][col]);
-              }
-            }
-            
-            // Fill from bottom up
-            for (let row = numberofrows - 1; row >= 0; row--) {
-              if (colBlocks.length > 0) {
-                // Place a block from our collection
-                gravityGrid[row][col] = colBlocks.pop();
-              } else {
-                // No more blocks, fill with empty
-                gravityGrid[row][col] = {
-                  color: -1,
-                  isEmpty: true
-                };
-              }
-            }
-          }
-          
-          // Show the blocks after gravity is applied
-          this.props.createGrid(gravityGrid);
-          
-          // STEP 4: After delay, add new blocks
-          setTimeout(() => {
-            console.log("STEP 4: Adding new blocks");
-            
-            // Create a grid with new blocks
-            const finalGrid = JSON.parse(JSON.stringify(gravityGrid));
-            
-            // Add new blocks at the top where empty
-            for (let row = 0; row < numberofrows; row++) {
-              for (let col = 0; col < numberofrows; col++) {
-                if (finalGrid[row][col].isEmpty || finalGrid[row][col].color === -1) {
-                  // Create a new random block
-                  finalGrid[row][col] = {
-                    color: Math.floor(Math.random() * this.props.numberofcolors),
-                    isNew: true
-                  };
-                }
-              }
-            }
-            
-            // Update the grid with final state
-            this.props.createGrid(finalGrid);
-            
-            // STEP 5: Check for cascade matches
-            setTimeout(() => {
-              console.log("STEP 5: Checking for cascade matches");
-              
-              const cascadeMatches = match3Helpers.checkMatches(
-                finalGrid,
-                numberofrows,
-                numberofrows
-              );
-              
-              if (cascadeMatches.length > 0) {
-                console.log(`Found ${cascadeMatches.length} cascade matches`);
-                
-                // Process cascade matches
-                this.processCascadeMatches(finalGrid, newScore);
-              } else {
-                // No cascade matches, so we can check for level completion
-                if (this.state.matchesMade >= this.props.level.matchGoal && !this.state.levelCompleted) {
-                  console.log("No cascade matches. Checking level completion.");
-                  this.setState({ levelCompleted: true }, () => {
-                    // Wait a bit before showing completion
-                    setTimeout(() => {
-                      this.handleLevelComplete();
-                    }, styles.delayMedium);
-                  });
-                }
-              }
-            }, styles.delayShort);
-            
-          }, styles.delayMedium); // Delay before adding new blocks
-          
-        }, styles.delayMedium); // Delay before applying gravity
-        
-      }, styles.delayShort); // Delay before removing matched blocks
-    } else {
-      // If no matches after swap, swap blocks back
-      console.log("No matches found, swapping back");
-      
-      // If no matches, swap back
-      newGrid = match3Helpers.swapBlocks(
-        newGrid,
-        row, col,
-        firstRow, firstCol
-      );
-      this.props.createGrid(newGrid);
-    }
-    
-    // Check if game is over (reached move limit)
-    if (this.state.moves >= this.props.level.moveLimit) {
-      this.setState({ gameOver: true });
-      this.props.didWin(false);
-      
-      // Show game over alert
-      Alert.alert(
-        "Level Failed",
-        `You've used all ${this.props.level.moveLimit} moves!\nYou made ${this.state.matchesMade}/${this.props.level.matchGoal} matches.\nFinal Score: ${this.props.game.score}`,
-        [
-          { 
-            text: "Try Again", 
-            onPress: () => {
-              if (this.props.restart) {
-                this.props.restart(true);
-                // We must reinitialize the game state after the restart completes
-                setTimeout(() => {
-                  this.initializeGame();
-                }, styles.delayShort);
-              }
-            }
-          }
-        ]
-      );
-    }
+    this.processSwap(firstRow, firstCol, row, col);
   }
   
   // Handle level completion 
@@ -645,7 +753,7 @@ export default class Match3Board extends Component {
           }, styles.delayShort);
         }
         
-        // Render the block
+        // Render the block with TouchableOpacity for swipe detection
         blocks.push(
           <TouchableOpacity
             key={`row${i}col${j}`}
@@ -654,8 +762,12 @@ export default class Match3Board extends Component {
               styles.blockSize,
               ...stateStyles
             ]}
-            onPress={() => this.handleBlockTap(i, j)}
-            disabled={this.state.gameOver}
+            onPressIn={() => this.handleBlockTouchStart(i, j)}
+            onPressOut={() => this.handleBlockTouchEnd(i, j)}
+            // Include row/col data directly in the component
+            // This avoids coordinate mapping issues
+            row={i}
+            col={j}
           >
             <View 
               style={outerCircleStyle}

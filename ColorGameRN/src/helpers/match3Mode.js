@@ -267,10 +267,7 @@ export function checkMatches(grid, numRows, numCols) {
   const gridCopy = JSON.parse(JSON.stringify(grid));
   const matches = [];
   const minMatchSize = MATCH3_MODE.MIN_MATCH_LENGTH;
-  
-  console.log("DEBUG - CHECKING MATCHES ON GRID:", 
-    JSON.stringify(gridCopy.map(row => row.map(cell => cell.color))));
-  
+
   // SIMPLIFIED MATCHING ALGORITHM FOR DEBUGGING
   
   // Check horizontal matches - simpler version
