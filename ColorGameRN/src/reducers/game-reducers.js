@@ -6,7 +6,7 @@ const initialState = {
   clicks: 0,
   grid: [],
   blocks: [],
-  gameMode: 'classic', // 'classic' or 'puzzle'
+  gameMode: 'classic', // 'classic' or 'match3'
   score: 0,
   matchesMade: 0
 };

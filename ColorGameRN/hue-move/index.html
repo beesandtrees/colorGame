@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Hello!</title>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    <!-- import the webpage's stylesheet -->
+    <link rel="stylesheet" href="./style.css">
+    
+    <!-- import the webpage's javascript file -->
+    <script src="./script.js" defer></script>
+  </head>  
+  <body>  
+    <canvas id="canvas" width="360" height="480"></canvas>
+    
+    <button class="btn shuffle start-game" id="startGame" onclick="shufflePuzzle()" ontouchstart="shufflePuzzle()">
+      Start Game
+    </button>     
+    
+    <div class="modal" id="modal">
+      <div class="modal-bg">
+        <div class="modal-box">
+          <div class="modal-content winner" id="winner">
+            <h2>
+              You Won!
+            </h2>
+            <p>
+              You beat the game in <span id="movecount"></span> moves.
+            </p>
+            <button class="btn" onclick="startGame()" ontouchstart="startGame()">
+              New Puzzle
+            </button>
+          </div>
+          <div class="modal-content start" id="start" >
+            <h2>
+              Color Shuffle
+            </h2>
+            <button class="btn" onclick="startGame()" ontouchstart="startGame()">
+              New Puzzle
+            </button>
+          </div>          
+        </div>
+      </div>
+    </div>
+    
+    <div class="buttonrow">
+      <button class="btn shuffle" onclick="startGame()" ontouchstart="startGame()">
+        New Colors
+      </button>       
+      <button class="btn shuffle" onclick="moreDifficult()" ontouchstart="moreDifficult()">
+        HARDER +
+      </button> 
+      <button class="btn shuffle" onclick="lessDifficult()" ontouchstart="lessDifficult()">
+        EASIER -
+      </button>        
+    </div>
+    <br />
+    <br />
+  </body>
+</html>

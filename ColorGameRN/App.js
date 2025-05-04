@@ -9,11 +9,11 @@ import rootReducer from './src/reducers';
 import * as gameActions from './src/actions';
 import { colorArrays } from './src/helpers/constants.js';
 import * as gamehelpers from './src/helpers/helpers.js';
-import * as puzzleHelpers from './src/helpers/puzzleMode.js';
+import * as match3Helpers from './src/helpers/match3Mode.js';
 
 import Logo from './src/components/Logo/Logo.js';
 import Board from './src/components/Board/Board.js';
-import PuzzleBoard from './src/components/Board/PuzzleBoard.js';
+import Match3Board from './src/components/Board/Match3Board.js';
 import WinLose from './src/components/WinLose/WinLose.js';
 import ModeSelect from './src/components/ModeSelect/ModeSelect.js';
 
@@ -26,9 +26,9 @@ class Info extends Component {
     let instructions = "";
     if (gameMode === 'classic') {
       instructions = "Click the dots to change their colors. Your goal is to make them all match the page background.";
-    } else if (gameMode === 'puzzle') {
+    } else if (gameMode === 'match3') {
       instructions = 
-        "Puzzle Mode is a Match-3 style game:\n\n" +
+        "Match 3 Mode:\n\n" +
         "• TAP a block to select it\n" +
         "• TAP an adjacent block to swap them\n" +
         "• MATCH 3 or more blocks of the same color\n" + 
@@ -78,8 +78,8 @@ class AppContent extends Component {
   getLevel(levelNumber, gameMode) {
     if (gameMode === 'classic') {
       return gamehelpers.createLevel(levelNumber);
-    } else if (gameMode === 'puzzle') {
-      return puzzleHelpers.createPuzzleLevel(levelNumber);
+    } else if (gameMode === 'match3') {
+      return match3Helpers.createMatch3Level(levelNumber);
     }
     // Default to classic mode if unknown
     return gamehelpers.createLevel(levelNumber);
@@ -120,8 +120,8 @@ class AppContent extends Component {
         level.numberofrows,
         level.numberofcolors
       );
-    } else if (game.gameMode === 'puzzle') {
-      grid = puzzleHelpers.generatePuzzleGrid(
+    } else if (game.gameMode === 'match3') {
+      grid = match3Helpers.generateMatch3Grid(
         level.numberofrows,
         level.numberofcolors
       );
@@ -183,11 +183,11 @@ class AppContent extends Component {
           </Text>
         </View>
       );
-    } else if (game.gameMode === 'puzzle') {
+    } else if (game.gameMode === 'match3') {
       return (
         <View style={styles.header}>
           <Logo />
-          <Text style={styles.title}>Color Puzzle</Text>
+          <Text style={styles.title}>Color Match 3</Text>
           <View style={styles.headerButtons}>
             <TouchableOpacity 
               style={styles.headerButton}
@@ -203,18 +203,31 @@ class AppContent extends Component {
             </TouchableOpacity>
           </View>
           <View style={styles.statsContainer}>
-            <Text style={styles.count}>
-              Score: <Text style={styles.countNumber}>{game.score}</Text>
-            </Text>
-            <Text style={styles.count}>
-              Matches: <Text style={styles.countNumber}>{game.matchesMade}/{level.matchGoal}</Text>
-            </Text>
-            <Text style={styles.count}>
-              Moves: <Text style={styles.countNumber}>{level.moveLimit - game.clicks}</Text>
-            </Text>
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>Score</Text>
+              <Text style={styles.statValue}>{game.score}</Text>
+            </View>
+            <View style={styles.meterContainer}>
+              <Text style={styles.statLabel}>Progress</Text>
+              <View style={styles.meterBg}>
+                <View 
+                  style={[
+                    styles.meterFill, 
+                    { width: `${Math.min(100, (game.matchesMade / level.matchGoal) * 100)}%` }
+                  ]}
+                />
+              </View>
+              <Text style={styles.meterPercent}>
+                {Math.floor((game.matchesMade / level.matchGoal) * 100)}%
+              </Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>Moves</Text>
+              <Text style={styles.statValue}>{level.moveLimit - game.clicks}</Text>
+            </View>
           </View>
           <Text style={styles.goalText}>
-            Level {level.level}: Make <Text style={styles.goalNumber}>{level.matchGoal}</Text> matches
+            Level {level.level}: Fill the progress bar by making matches
           </Text>
         </View>
       );
@@ -243,9 +256,9 @@ class AppContent extends Component {
           maxclick={level.maxclick}
         />
       );
-    } else if (game.gameMode === 'puzzle') {
+    } else if (game.gameMode === 'match3') {
       return (
-        <PuzzleBoard
+        <Match3Board
           colors={this.state.colors}
           grid={game.grid}
           game={game}
@@ -361,6 +374,47 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: 40,
   },
+  meterContainer: {
+    alignItems: 'center',
+    width: '35%',
+  },
+  meterLabel: {
+    color: 'white',
+    fontSize: 16,
+    marginBottom: 4,
+  },
+  meterBg: {
+    width: '100%',
+    height: 12,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  meterFill: {
+    height: '100%',
+    backgroundColor: 'rgba(255,255,255,0.8)',
+  },
+  meterPercent: {
+    color: 'white',
+    fontSize: 14,
+    marginTop: 4,
+    fontWeight: 'bold',
+  },
+  statItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '30%',
+  },
+  statLabel: {
+    color: 'white',
+    fontSize: 16,
+    marginBottom: 4,
+  },
+  statValue: {
+    color: 'white',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
   header: {
     alignItems: 'center',
     paddingHorizontal: 30,
@@ -412,9 +466,10 @@ const styles = StyleSheet.create({
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
     width: '100%',
     marginTop: 10,
-    marginBottom: 30,
+    marginBottom: 20,
   },
   countNumber: {
     fontWeight: 'bold',

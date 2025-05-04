@@ -6,8 +6,8 @@ export const winText = [
   'Level Up'
 ];
 
-// Constants for Puzzle Mode
-export const PUZZLE_MODE = {
+// Constants for Match 3 Mode
+export const MATCH3_MODE = {
   // Matching rules
   MIN_MATCH_LENGTH: 3,            // Minimum length for a match
   
@@ -23,13 +23,13 @@ export const PUZZLE_MODE = {
   CASCADE_BONUS_MULTIPLIER: 1.5,  // Score multiplier for cascade matches
   
   // Limits
-  MAX_CASCADE_ITERATIONS: 3,      // Maximum number of cascade iterations
+  MAX_CASCADE_ITERATIONS: 5,      // Maximum number of cascade iterations (increased to allow for more chain reactions)
   
   // Level progression
-  BASE_MATCH_GOAL: 5,             // Base number of matches required to complete level 1
-  MATCHES_INCREASE_PER_LEVEL: 3,  // Additional matches required per level
-  BASE_MOVE_LIMIT: 15,            // Starting move limit for level 1
-  MOVE_INCREASE_PER_LEVEL: 5,     // Additional moves given per level
+  BASE_MATCH_GOAL: 50,            // Base number of matches required to complete level 1
+  MATCHES_INCREASE_PER_LEVEL: 10, // Additional matches required per level (divisible by 5)
+  BASE_MOVE_LIMIT: 35,            // Starting move limit for level 1 (increased for higher match goal)
+  MOVE_INCREASE_PER_LEVEL: 10,    // Additional moves given per level (increased for higher match goals)
   
   // Scoring multipliers for higher levels
   LEVEL_SCORE_MULTIPLIER: 1.2,    // Score multiplier per level (level 2 = 1.2x, level 3 = 1.44x, etc)

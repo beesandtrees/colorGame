@@ -25,11 +25,11 @@ const ModeSelect = ({ visible, onSelect, onClose }) => {
           
           <TouchableOpacity 
             style={styles.modeButton} 
-            onPress={() => onSelect('puzzle')}
+            onPress={() => onSelect('match3')}
           >
-            <Text style={styles.modeTitle}>Puzzle Mode</Text>
+            <Text style={styles.modeTitle}>Match 3 Mode</Text>
             <Text style={styles.modeDescription}>
-              Match 3 colors in a row to score points
+              Match 3 or more colors in a row to score points
             </Text>
           </TouchableOpacity>
           
