@@ -60,10 +60,24 @@ export default class Match3Board extends Component {
       },
       
       // When touch is released
-      onPanResponderRelease: () => {
+      onPanResponderRelease: (_, gestureState) => {
         console.log('⚡ Board PanResponder - Touch released');
-        // Reset tracking
-        this.touchInfo.isTracking = false;
+        
+        // Check for small movements (taps) vs large movements (swipes)
+        const { dx, dy } = gestureState;
+        const isSmallMovement = Math.abs(dx) < this.SWIPE_THRESHOLD && Math.abs(dy) < this.SWIPE_THRESHOLD;
+        
+        // If we were tracking a touch and it had small movement (likely a tap),
+        // don't treat it as a tap since the block's onPressIn already handled it
+        if (this.touchInfo && this.touchInfo.isTracking && isSmallMovement) {
+          console.log('⚡ Small movement detected, not treating as tap');
+          // Don't call handleBlockPress here - that would cause double handling
+        }
+        
+        // Reset tracking regardless
+        if (this.touchInfo) {
+          this.touchInfo.isTracking = false;
+        }
       }
     });
   }
@@ -593,23 +607,26 @@ export default class Match3Board extends Component {
   }
   
   handlePanResponderEnd(evt, gestureState) {
-    // If we were tracking a touch and no swipe was detected, treat as tap
-    if (this.touchInfo.isTracking) {
-      console.log(`🎮 Touch ended without swipe, treating as tap at [${this.touchInfo.currentRow}, ${this.touchInfo.currentCol}]`);
-      this.handleBlockPress(this.touchInfo.currentRow, this.touchInfo.currentCol);
+    // We shouldn't need to handle tap events here as they should already be handled by onPressIn
+    // Only log the end of tracking
+    if (this.touchInfo && this.touchInfo.isTracking) {
+      console.log(`🎮 Touch tracking ended at [${this.touchInfo.currentRow}, ${this.touchInfo.currentCol}]`);
+      // Don't call handleBlockPress here - that would be duplicate processing
     }
     
     // Reset tracking state
-    this.touchInfo.isTracking = false;
+    if (this.touchInfo) {
+      this.touchInfo.isTracking = false;
+    }
   }
   
-  // Tap-based handling as fallback
-  handleBlockPress(row, col) {
-    console.log(`Block pressed at [${row},${col}]`);
+  // Unified handler for both taps and swipes
+  handleBlockTapOrSwipe(row, col) {
+    console.log(`Block interaction at [${row},${col}]`);
     
     // If game is over, don't allow more moves
     if (this.state.gameOver) {
-      console.log("Game is over, ignoring press");
+      console.log("Game is over, ignoring interaction");
       return;
     }
     
@@ -618,7 +635,7 @@ export default class Match3Board extends Component {
     
     // Make sure coordinates are valid
     if (row < 0 || row >= numberofrows || col < 0 || col >= numberofrows) {
-      console.log("Invalid coordinates, ignoring press");
+      console.log("Invalid coordinates, ignoring interaction");
       return;
     }
     
@@ -628,8 +645,11 @@ export default class Match3Board extends Component {
     // If no block is selected yet, select this one
     if (!this.firstSelectedBlock) {
       console.log("First block selected");
+      // Mark this block as selected
       newGrid[row][col].selected = true;
       this.firstSelectedBlock = { row, col };
+      
+      // Update the grid
       this.props.createGrid(newGrid);
       return;
     }
@@ -637,9 +657,9 @@ export default class Match3Board extends Component {
     // Get previous selection
     const { row: firstRow, col: firstCol } = this.firstSelectedBlock;
     
-    // If the same block is tapped twice, deselect it
+    // If the same block is interacted with twice, deselect it
     if (firstRow === row && firstCol === col) {
-      console.log("Same block tapped twice, deselecting");
+      console.log("Same block selected twice, deselecting");
       newGrid[row][col].selected = false;
       this.firstSelectedBlock = null;
       this.props.createGrid(newGrid);
@@ -649,7 +669,7 @@ export default class Match3Board extends Component {
     // Check if blocks are adjacent
     const isAdjacent = match3Helpers.areAdjacent(firstRow, firstCol, row, col);
     
-    // First, always clear the selection in UI
+    // Always clear the first selection
     newGrid[firstRow][firstCol].selected = false;
     this.props.createGrid(newGrid);
     
@@ -669,6 +689,12 @@ export default class Match3Board extends Component {
       this.firstSelectedBlock = { row, col };
       this.props.createGrid(newGrid);
     }
+  }
+  
+  // Legacy handler for backward compatibility - just forwards to our unified handler
+  handleBlockPress(row, col) {
+    // Just forward to our unified handler - don't duplicate logic
+    this.handleBlockTapOrSwipe(row, col);
   }
   
   componentWillUnmount() {
@@ -966,7 +992,6 @@ export default class Match3Board extends Component {
               styles.blockSize,
               ...stateStyles
             ]}
-            onPress={() => this.handleBlockPress(i, j)}
             onPressIn={() => {
               // When the block is pressed, directly store which block it is
               console.log(`🟦 Block at [${i},${j}] pressed`);
@@ -978,24 +1003,8 @@ export default class Match3Board extends Component {
                 isTracking: true
               };
               
-              // Select this block visually
-              const { grid } = this.props.game;
-              let newGrid = grid.map(row => [...row]);
-              
-              // Clear any previous selection first
-              if (this.firstSelectedBlock) {
-                const { row, col } = this.firstSelectedBlock;
-                if (grid[row]?.[col] && grid[row][col].selected) {
-                  newGrid[row][col].selected = false;
-                }
-              }
-              
-              // Highlight this block
-              newGrid[i][j].selected = true;
-              this.props.createGrid(newGrid);
-              
-              // Store as first selected block
-              this.firstSelectedBlock = { row: i, col: j };
+              // Start the block selection process
+              this.handleBlockTapOrSwipe(i, j);
             }}
             activeOpacity={0.7} // Give visual feedback when pressed
             accessible={true}
