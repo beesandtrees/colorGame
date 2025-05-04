@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { View, StyleSheet, TouchableOpacity, Alert, Text } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Alert, Text, PanResponder } from 'react-native';
 import * as match3Helpers from '../../helpers/match3Mode.js';
 import { MATCH3_MODE } from '../../helpers/constants.js';
 
@@ -16,16 +16,55 @@ export default class Match3Board extends Component {
       animationPhase: 'idle',
       cascadeCount: 0,
       matchesMade: 0,
-      levelCompleted: false
+      levelCompleted: false,
+      debug: {
+        lastTouch: null,
+        touchCount: 0,
+        swipeDetected: false,
+        swipeDirection: null
+      },
+      // Store the currently selected block for swipes
+      selectedBlock: null
     };
     
-    // No touch tracking needed - using simplified tap-based swapping
+    // Set up constants for swipe detection
+    this.SWIPE_THRESHOLD = 40; // Increased for more reliable detection
+    
+    // We'll track touches at the block level, not the board level
+    this.blockRefs = {};
+    
+    // Create a fully functional PanResponder for the board
+    this.panResponder = PanResponder.create({
+      // Always accept touch events
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      
+      // When touch starts
+      onPanResponderGrant: (evt, gestureState) => {
+        console.log('⚡ Board PanResponder - Touch detected');
+        this.handlePanResponderStart(evt, gestureState);
+      },
+      
+      // When touch moves
+      onPanResponderMove: (evt, gestureState) => {
+        console.log(`⚡ Board PanResponder - Move: dx=${gestureState.dx.toFixed(1)}, dy=${gestureState.dy.toFixed(1)}`);
+        this.handlePanResponderMove(evt, gestureState);
+      },
+      
+      // When touch ends
+      onPanResponderRelease: (evt, gestureState) => {
+        console.log('⚡ Board PanResponder - Touch released');
+        this.handlePanResponderEnd(evt, gestureState);
+      }
+    });
   }
 
   // Check if position is within grid bounds
   isValidPosition(row, col) {
     const rows = this.props.numberofrows;
-    return row >= 0 && row < rows && col >= 0 && col < rows;
+    const isValid = row >= 0 && row < rows && col >= 0 && col < rows;
+    console.log(`Checking position [${row},${col}] - Valid: ${isValid}`);
+    return isValid;
   }
 
   // Process the swap between two blocks
@@ -186,11 +225,12 @@ export default class Match3Board extends Component {
   processSwap(row1, col1, row2, col2) {
     // Check if blocks are adjacent
     if (!match3Helpers.areAdjacent(row1, col1, row2, col2)) {
-      console.log("Blocks are not adjacent, ignoring swap");
+      console.log("⛔ Blocks are not adjacent, ignoring swap");
       return;
     }
 
-    console.log(`Processing swap between [${row1},${col1}] and [${row2},${col2}]`);
+    const swipeTime = new Date().toISOString().split('T')[1].substr(0, 12);
+    console.log(`⏱️ ${swipeTime} - SWAP: Processing between [${row1},${col1}] and [${row2},${col2}]`);
     
     const { grid } = this.props.game;
     const { numberofrows } = this.props;
@@ -266,7 +306,8 @@ export default class Match3Board extends Component {
   componentDidMount() {
     // Initialize the game grid
     this.initializeGame();
-    console.log("Match 3 Mode initialized - tap blocks to swap!");
+    console.log("Match 3 Mode initialized - tap or swipe blocks to swap!");
+    console.log("Swipe threshold:", this.SWIPE_THRESHOLD, "pixels");
   }
   
   // Separate initialization function that can be reused
@@ -317,8 +358,201 @@ export default class Match3Board extends Component {
     );
   }
   
-  // Simplified approach - no more complex swipe detection
-  // Just direct handling of block selection and swaps
+  // Convert screen coordinates to grid position
+  getGridPosition(x, y) {
+    const rows = this.props.numberofrows;
+    
+    // For now, we're going to use a simple fixed approach:
+    // 1. Apply a scaling factor to the coordinates
+    //    (based on your observation that actual coords are ~10x larger)
+    const SCALE_FACTOR = 12; // Slightly increased to ensure better coverage
+    const scaledX = x * SCALE_FACTOR;
+    const scaledY = y * SCALE_FACTOR;
+    
+    // 2. Estimate the board size based on observed coordinates
+    // Adjust based on testing with actual touch events
+    const boardWidth = 320;  // Slightly larger for a better fit
+    const boardHeight = 320; // Keep square aspect ratio
+    
+    // 3. Calculate the size of each cell
+    const cellWidth = boardWidth / rows;
+    const cellHeight = boardHeight / rows;
+    
+    // 4. Calculate the row and column
+    const col = Math.min(Math.max(Math.floor(scaledX / cellWidth), 0), rows - 1);
+    const row = Math.min(Math.max(Math.floor(scaledY / cellHeight), 0), rows - 1);
+    
+    console.log(`🎯 Touch at (${x}, ${y}) scaled to (${scaledX}, ${scaledY}) => grid [${row},${col}]`);
+    
+    return { row, col };
+  }
+
+  // PanResponder handlers
+  handlePanResponderStart(evt, gestureState) {
+    if (this.state.gameOver) return;
+    
+    // Debug all available properties to identify what we can use
+    console.log('🔍 DEBUG TOUCH EVENT:', JSON.stringify({
+      gestureState: {
+        dx: gestureState.dx,
+        dy: gestureState.dy,
+        moveX: gestureState.moveX,
+        moveY: gestureState.moveY,
+        x0: gestureState.x0,
+        y0: gestureState.y0,
+      },
+      nativeEvent: {
+        pageX: evt.nativeEvent.pageX,
+        pageY: evt.nativeEvent.pageY,
+        locationX: evt.nativeEvent.locationX,
+        locationY: evt.nativeEvent.locationY,
+      }
+    }));
+    
+    // Get touch coordinates - use gestureState for more reliable position
+    // x0/y0 are the initial touch coordinates
+    const { x0, y0 } = gestureState;
+    const { pageX, pageY, locationX, locationY } = evt.nativeEvent;
+    
+    // Increment debug touch counter
+    const touchCount = this.state.debug.touchCount + 1;
+    
+    // Use the fixed scaling approach
+    const gridPos = this.getGridPosition(locationX, locationY);
+    console.log(`🔍 Touch: (${locationX.toFixed(1)},${locationY.toFixed(1)}) => grid [${gridPos.row},${gridPos.col}]`);
+    
+    // Update debug state
+    this.setState(prevState => ({
+      debug: {
+        ...prevState.debug,
+        lastTouch: { x: locationX, y: locationY },
+        touchCount,
+        swipeDetected: false,
+        swipeDirection: null
+      }
+    }));
+    
+    const { grid } = this.props.game;
+    
+    // Simply check if the grid position is valid
+    if (this.isValidPosition(gridPos.row, gridPos.col) && 
+        grid[gridPos.row] && 
+        grid[gridPos.row][gridPos.col] && 
+        grid[gridPos.row][gridPos.col].color !== -1 && 
+        !grid[gridPos.row][gridPos.col].isEmpty) {
+      
+      // Found a valid block
+      console.log(`🟢 Selected block at [${gridPos.row}, ${gridPos.col}]`);
+      
+      // Store touch info
+      this.touchInfo = {
+        startX: locationX,
+        startY: locationY,
+        currentRow: gridPos.row,
+        currentCol: gridPos.col,
+        isTracking: true
+      };
+      
+      // Highlight the selected block
+      let newGrid = grid.map(row => [...row]);
+      newGrid[gridPos.row][gridPos.col].selected = true;
+      this.props.createGrid(newGrid);
+    } else {
+      console.log(`🔴 Invalid or empty block at [${gridPos.row}, ${gridPos.col}]`);
+    }
+  }
+  
+  // Simplified swipe detection using cardinal directions only
+  handlePanResponderMove(evt, gestureState) {
+    // Only process if we have a valid starting position and are tracking
+    if (!this.touchInfo?.isTracking) {
+      console.log('⚠️ Not tracking a valid touch yet');
+      return;
+    }
+    
+    const { dx, dy } = gestureState;
+    
+    // Use emoji indicators for better visualization in logs
+    let dirIndicator = '';
+    if (Math.abs(dx) > Math.abs(dy)) {
+      dirIndicator = dx > 0 ? '➡️' : '⬅️';
+    } else {
+      dirIndicator = dy > 0 ? '⬇️' : '⬆️';
+    }
+    
+    console.log(`${dirIndicator} Swipe: dx=${dx.toFixed(1)}, dy=${dy.toFixed(1)}, needed: ${this.SWIPE_THRESHOLD}`);
+    
+    // Only process if movement exceeds threshold
+    if (Math.abs(dx) > this.SWIPE_THRESHOLD || Math.abs(dy) > this.SWIPE_THRESHOLD) {
+      // Determine the primary swipe direction - we only allow 4 cardinal directions
+      let targetRow = this.touchInfo.currentRow;
+      let targetCol = this.touchInfo.currentCol;
+      let direction = '';
+      
+      // We only consider the dominant axis (largest movement)
+      if (Math.abs(dx) > Math.abs(dy)) {
+        // Horizontal swipe (LEFT/RIGHT)
+        direction = dx > 0 ? 'RIGHT' : 'LEFT';
+        targetCol = dx > 0 ? targetCol + 1 : targetCol - 1;
+      } else {
+        // Vertical swipe (UP/DOWN)
+        direction = dy > 0 ? 'DOWN' : 'UP';
+        targetRow = dy > 0 ? targetRow + 1 : targetRow - 1;
+      }
+      
+      // Record in debug display
+      this.setState(prevState => ({
+        debug: {
+          ...prevState.debug,
+          swipeDetected: true,
+          swipeDirection: direction
+        }
+      }));
+      
+      // Direction emoji for logging
+      const dirEmoji = 
+        direction === 'RIGHT' ? '➡️' :
+        direction === 'LEFT' ? '⬅️' :
+        direction === 'DOWN' ? '⬇️' : '⬆️';
+      
+      // Log the detected swipe with source and target positions
+      console.log(`${dirEmoji} ${direction} swipe from [${this.touchInfo.currentRow},${this.touchInfo.currentCol}] to [${targetRow},${targetCol}]`);
+      
+      // Stop tracking to prevent multiple swipes from one gesture
+      this.touchInfo.isTracking = false;
+      
+      // Only process swipe if target position is valid
+      if (this.isValidPosition(targetRow, targetCol)) {
+        // Clear selection highlight
+        const { grid } = this.props.game;
+        const newGrid = grid.map(row => [...row]);
+        
+        if (newGrid[this.touchInfo.currentRow]?.[this.touchInfo.currentCol]) {
+          newGrid[this.touchInfo.currentRow][this.touchInfo.currentCol].selected = false;
+          this.props.createGrid(newGrid);
+        }
+        
+        // Process the swap with source and target positions
+        console.log(`🎯 Final swap: [${this.touchInfo.currentRow},${this.touchInfo.currentCol}] to [${targetRow},${targetCol}]`);
+        this.processSwap(this.touchInfo.currentRow, this.touchInfo.currentCol, targetRow, targetCol);
+      } else {
+        console.log(`🚫 Can't swipe - target [${targetRow},${targetCol}] is outside grid bounds`);
+      }
+    }
+  }
+  
+  handlePanResponderEnd(evt, gestureState) {
+    // If we were tracking a touch and no swipe was detected, treat as tap
+    if (this.touchInfo.isTracking) {
+      console.log(`🎮 Touch ended without swipe, treating as tap at [${this.touchInfo.currentRow}, ${this.touchInfo.currentCol}]`);
+      this.handleBlockPress(this.touchInfo.currentRow, this.touchInfo.currentCol);
+    }
+    
+    // Reset tracking state
+    this.touchInfo.isTracking = false;
+  }
+  
+  // Tap-based handling as fallback
   handleBlockPress(row, col) {
     console.log(`Block pressed at [${row},${col}]`);
     
@@ -584,9 +818,7 @@ export default class Match3Board extends Component {
       width: `${100 / rows}%`,
       height: `${100 / rows}%`
     };
-    
-    console.log(`Rendering blocks with ${rows}x${rows} grid, blockSize: ${100/rows}%`);
-    
+        
     // Keep consistent padding across all grid sizes for visual consistency
     // Original Block.js uses padding: 2 consistently
     
@@ -672,7 +904,9 @@ export default class Match3Board extends Component {
           }, styles.delayShort);
         }
         
-        // Render the block with TouchableOpacity for swipe detection
+        // No block-specific PanResponder - using board-level instead
+        
+        // Render the block with TouchableOpacity and PanResponder
         blocks.push(
           <TouchableOpacity
             key={`row${i}col${j}`}
@@ -683,7 +917,7 @@ export default class Match3Board extends Component {
             ]}
             onPress={() => this.handleBlockPress(i, j)}
             activeOpacity={0.7} // Give visual feedback when pressed
-            // For clarity and direct navigation
+            // Pass both row/col for direct position access
             row={i}
             col={j}
             accessible={true}
@@ -715,6 +949,7 @@ export default class Match3Board extends Component {
   
   render() {
     const hasWon = this.props.game.hasWon;
+    const { debug } = this.state;
     
     return (
       <View 
@@ -723,9 +958,33 @@ export default class Match3Board extends Component {
           hasWon === false ? styles.gameOver : null
         ]}
       >
-        <View style={styles.game}>
+        {/* Main game board with pan responder */}
+        <View 
+          style={styles.game}
+          {...this.panResponder.panHandlers}
+          ref={ref => this.gameRef = ref}
+          onLayout={event => {
+            // Store board dimensions when layout changes
+            const { width, height } = event.nativeEvent.layout;
+            console.log(`📏 Game board dimensions: ${width}x${height}`);
+          }}
+        >
           {this.props.game.blocks}
         </View>
+        
+        {/* Detailed debug display - hidden in production */}
+        {__DEV__ && (
+          <View style={styles.debugContainer}>
+            <Text style={styles.debugText}>
+              🔢 Grid position: {this.touchInfo?.currentRow ?? '-'},{this.touchInfo?.currentCol ?? '-'} | 
+              👆 Touch #{debug.touchCount}: {debug.lastTouch ? `(${debug.lastTouch.x.toFixed(0)},${debug.lastTouch.y.toFixed(0)})` : 'none'} | 
+              {debug.swipeDetected ? `${debug.swipeDirection === 'RIGHT' ? '➡️' : 
+                debug.swipeDirection === 'LEFT' ? '⬅️' : 
+                debug.swipeDirection === 'DOWN' ? '⬇️' : 
+                debug.swipeDirection === 'UP' ? '⬆️' : '❓'} ${debug.swipeDirection}` : '❌ No swipe'}
+            </Text>
+          </View>
+        )}
       </View>
     );
   }
@@ -814,4 +1073,17 @@ const styles = StyleSheet.create({
   delayShort: 300,
   delayMedium: 400,
   delayLong: 500,
+  
+  // Debug information display
+  debugContainer: {
+    marginTop: 10,
+    padding: 5,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    borderRadius: 5,
+  },
+  debugText: {
+    fontSize: 10,
+    color: '#333',
+    textAlign: 'center',
+  }
 });

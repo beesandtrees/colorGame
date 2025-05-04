@@ -295,10 +295,6 @@ export function checkMatches(grid, numRows, numCols) {
       if (matchLength >= minMatchSize) {
         const match = [];
         
-        // Include all cells in the match
-        console.log(`Found horizontal match of ${matchLength} at row ${row}, cols ${col}-${col+matchLength-1}`);
-        console.log(`  Colors: ${new Array(matchLength).fill(0).map((_, i) => gridCopy[row][col+i].color).join(',')}`);
-        
         for (let k = 0; k < matchLength; k++) {
           match.push({ row, col: col + k });
         }
@@ -334,10 +330,6 @@ export function checkMatches(grid, numRows, numCols) {
       // If we have a match of at least minMatchSize
       if (matchLength >= minMatchSize) {
         const match = [];
-        
-        // Include all cells in the match
-        console.log(`Found vertical match of ${matchLength} at col ${col}, rows ${row}-${row+matchLength-1}`);
-        console.log(`  Colors: ${new Array(matchLength).fill(0).map((_, i) => gridCopy[row+i][col].color).join(',')}`);
         
         for (let k = 0; k < matchLength; k++) {
           match.push({ row: row + k, col });
