@@ -16,6 +16,7 @@ import Board from './src/components/Board/Board.js';
 import Match3Board from './src/components/Board/Match3Board.js';
 import WinLose from './src/components/WinLose/WinLose.js';
 import ModeSelect from './src/components/ModeSelect/ModeSelect.js';
+import Match3Prototype from './src/prototype/Match3Prototype.js';
 
 const store = createStore(rootReducer);
 
@@ -34,6 +35,14 @@ class Info extends Component {
         "• MATCH 3 or more blocks of the same color\n" + 
         "• EARN points for each match you make\n\n" +
         "You have a limited number of moves - make them count!";
+    } else if (gameMode === 'prototype') {
+      instructions = 
+        "Animated Prototype:\n\n" +
+        "• TAP a block to select it\n" +
+        "• TAP an adjacent block to swap them\n" +
+        "• WATCH the smooth animations as blocks move\n" +
+        "• SEE special effects for matches and new blocks\n\n" +
+        "This is a prototype with enhanced animations!";
     }
     
     return (
@@ -231,6 +240,30 @@ class AppContent extends Component {
           </Text>
         </View>
       );
+    } else if (game.gameMode === 'prototype') {
+      return (
+        <View style={styles.header}>
+          <Logo />
+          <Text style={[styles.title, { color: '#0088ff' }]}>Animated Match 3</Text>
+          <View style={styles.headerButtons}>
+            <TouchableOpacity 
+              style={styles.headerButton}
+              onPress={() => this.showModeSelect(true)}
+            >
+              <Text style={styles.headerButtonText}>Switch Mode</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.infoButton}
+              onPress={() => this.showInfo(true)}
+            >
+              <Text style={styles.infoButtonText}>?</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.goalText}>
+            Animated prototype with smooth transitions and effects
+          </Text>
+        </View>
+      );
     }
   }
   
@@ -275,10 +308,24 @@ class AppContent extends Component {
           restart={(startover) => this.restart(startover)}
         />
       );
+    } else if (game.gameMode === 'prototype') {
+      // Return the prototype component
+      return (
+        <View style={{ flex: 1 }}>
+          <Match3Prototype />
+        </View>
+      );
     }
   }
   
   renderFooter() {
+    const { game } = this.props;
+    
+    // Don't show footer for prototype mode
+    if (game.gameMode === 'prototype') {
+      return null;
+    }
+    
     return (
       <View style={styles.footer}>
         <TouchableOpacity 
@@ -299,7 +346,7 @@ class AppContent extends Component {
       <SafeAreaView 
         style={[
           styles.container, 
-          { backgroundColor: baseColor }
+          { backgroundColor: game.gameMode === 'prototype' ? '#f8f9fa' : baseColor }
         ]}
       >
         <StatusBar style="light" />
@@ -307,14 +354,16 @@ class AppContent extends Component {
         {this.renderHeader()}
         {this.renderBoard()}
         
-        <WinLose
-          won={game.hasWon}
-          restart={startover => this.restart(startover)}
-          game={game}
-          updateLevel={this.props.updateLevel}
-          updateMatchesMade={this.props.updateMatchesMade}
-          didWin={this.props.didWin}
-        />
+        {game.gameMode !== 'prototype' && (
+          <WinLose
+            won={game.hasWon}
+            restart={startover => this.restart(startover)}
+            game={game}
+            updateLevel={this.props.updateLevel}
+            updateMatchesMade={this.props.updateMatchesMade}
+            didWin={this.props.didWin}
+          />
+        )}
         
         {this.renderFooter()}
         

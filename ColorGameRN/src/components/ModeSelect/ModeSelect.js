@@ -33,6 +33,16 @@ const ModeSelect = ({ visible, onSelect, onClose }) => {
             </Text>
           </TouchableOpacity>
           
+          <TouchableOpacity 
+            style={[styles.modeButton, { backgroundColor: '#e8f4ff' }]} 
+            onPress={() => onSelect('prototype')}
+          >
+            <Text style={[styles.modeTitle, { color: '#0088ff' }]}>Animated Prototype</Text>
+            <Text style={styles.modeDescription}>
+              Match 3 with smooth animations and effects
+            </Text>
+          </TouchableOpacity>
+          
           <TouchableOpacity
             style={styles.closeButton}
             onPress={onClose}
