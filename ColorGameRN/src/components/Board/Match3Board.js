@@ -33,28 +33,37 @@ export default class Match3Board extends Component {
     // We'll track touches at the block level, not the board level
     this.blockRefs = {};
     
-    // Create a fully functional PanResponder for the board
+    // Create a simplified PanResponder that only handles swiping
     this.panResponder = PanResponder.create({
-      // Always accept touch events
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      
-      // When touch starts
-      onPanResponderGrant: (evt, gestureState) => {
-        console.log('⚡ Board PanResponder - Touch detected');
-        this.handlePanResponderStart(evt, gestureState);
+      // Only take over when there's movement (for swipes)
+      onStartShouldSetPanResponder: () => false, // Let block touches work first
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Only take over for significant movements (swipes)
+        const { dx, dy } = gestureState;
+        return Math.abs(dx) > 10 || Math.abs(dy) > 10;
       },
       
-      // When touch moves
-      onPanResponderMove: (evt, gestureState) => {
-        console.log(`⚡ Board PanResponder - Move: dx=${gestureState.dx.toFixed(1)}, dy=${gestureState.dy.toFixed(1)}`);
-        this.handlePanResponderMove(evt, gestureState);
+      // When significant movement is detected
+      onPanResponderMove: (_, gestureState) => {
+        const { dx, dy } = gestureState;
+        console.log(`⚡ Board swipe detected: dx=${dx.toFixed(1)}, dy=${dy.toFixed(1)}`);
+        
+        // If we're not tracking any specific block yet, ignore
+        if (!this.touchInfo?.isTracking || !this.touchInfo?.currentRow) {
+          return;
+        }
+        
+        // Only process significant swipes
+        if (Math.abs(dx) > this.SWIPE_THRESHOLD || Math.abs(dy) > this.SWIPE_THRESHOLD) {
+          this.processSwipeMovement(dx, dy);
+        }
       },
       
-      // When touch ends
-      onPanResponderRelease: (evt, gestureState) => {
+      // When touch is released
+      onPanResponderRelease: () => {
         console.log('⚡ Board PanResponder - Touch released');
-        this.handlePanResponderEnd(evt, gestureState);
+        // Reset tracking
+        this.touchInfo.isTracking = false;
       }
     });
   }
@@ -65,6 +74,70 @@ export default class Match3Board extends Component {
     const isValid = row >= 0 && row < rows && col >= 0 && col < rows;
     console.log(`Checking position [${row},${col}] - Valid: ${isValid}`);
     return isValid;
+  }
+  
+  // Process a swipe movement from the current block
+  processSwipeMovement(dx, dy) {
+    // Make sure we have a valid block to swipe from
+    if (!this.touchInfo || !this.touchInfo.isTracking) {
+      console.log('⚠️ No block selected for swipe');
+      return;
+    }
+    
+    // Determine the primary direction of the swipe
+    let direction = '';
+    let dirEmoji = '';
+    let targetRow = this.touchInfo.currentRow;
+    let targetCol = this.touchInfo.currentCol;
+    
+    // Use the dominant axis to determine cardinal direction
+    if (Math.abs(dx) > Math.abs(dy)) {
+      // Horizontal swipe
+      direction = dx > 0 ? 'RIGHT' : 'LEFT';
+      dirEmoji = dx > 0 ? '➡️' : '⬅️';
+      targetCol = dx > 0 ? targetCol + 1 : targetCol - 1;
+    } else {
+      // Vertical swipe
+      direction = dy > 0 ? 'DOWN' : 'UP';
+      dirEmoji = dy > 0 ? '⬇️' : '⬆️';
+      targetRow = dy > 0 ? targetRow + 1 : targetRow - 1;
+    }
+    
+    // Log the swipe with emoji and details
+    console.log(`${dirEmoji} ${direction} swipe from [${this.touchInfo.currentRow},${this.touchInfo.currentCol}] to [${targetRow},${targetCol}]`);
+    
+    // Record the swipe in state for debug display
+    this.setState(prevState => ({
+      debug: {
+        ...prevState.debug,
+        swipeDetected: true,
+        swipeDirection: direction
+      }
+    }));
+    
+    // Stop tracking to prevent multiple swipes from the same gesture
+    this.touchInfo.isTracking = false;
+    
+    // Make sure the target position is valid
+    if (this.isValidPosition(targetRow, targetCol)) {
+      // Clear the visual selection
+      const { grid } = this.props.game;
+      const newGrid = grid.map(row => [...row]);
+      
+      if (newGrid[this.touchInfo.currentRow] && newGrid[this.touchInfo.currentCol]) {
+        newGrid[this.touchInfo.currentRow][this.touchInfo.currentCol].selected = false;
+        this.props.createGrid(newGrid);
+      }
+      
+      // Reset the firstSelectedBlock
+      this.firstSelectedBlock = null;
+      
+      // Process the swap
+      console.log(`🎮 Processing swap from [${this.touchInfo.currentRow},${this.touchInfo.currentCol}] to [${targetRow},${targetCol}]`);
+      this.processSwap(this.touchInfo.currentRow, this.touchInfo.currentCol, targetRow, targetCol);
+    } else {
+      console.log(`🚫 Cannot swipe - target [${targetRow},${targetCol}] is outside the grid`);
+    }
   }
 
   // Process the swap between two blocks
@@ -358,33 +431,11 @@ export default class Match3Board extends Component {
     );
   }
   
-  // Convert screen coordinates to grid position
+  // We don't need to convert coordinates - we'll use the direct block references instead
   getGridPosition(x, y) {
-    const rows = this.props.numberofrows;
-    
-    // For now, we're going to use a simple fixed approach:
-    // 1. Apply a scaling factor to the coordinates
-    //    (based on your observation that actual coords are ~10x larger)
-    const SCALE_FACTOR = 12; // Slightly increased to ensure better coverage
-    const scaledX = x * SCALE_FACTOR;
-    const scaledY = y * SCALE_FACTOR;
-    
-    // 2. Estimate the board size based on observed coordinates
-    // Adjust based on testing with actual touch events
-    const boardWidth = 320;  // Slightly larger for a better fit
-    const boardHeight = 320; // Keep square aspect ratio
-    
-    // 3. Calculate the size of each cell
-    const cellWidth = boardWidth / rows;
-    const cellHeight = boardHeight / rows;
-    
-    // 4. Calculate the row and column
-    const col = Math.min(Math.max(Math.floor(scaledX / cellWidth), 0), rows - 1);
-    const row = Math.min(Math.max(Math.floor(scaledY / cellHeight), 0), rows - 1);
-    
-    console.log(`🎯 Touch at (${x}, ${y}) scaled to (${scaledX}, ${scaledY}) => grid [${row},${col}]`);
-    
-    return { row, col };
+    // This method is no longer needed but kept for compatibility
+    console.log(`⚠️ Warning: Using direct block references instead of coordinate mapping`);
+    return { row: 0, col: 0 }; // Dummy return
   }
 
   // PanResponder handlers
@@ -916,10 +967,37 @@ export default class Match3Board extends Component {
               ...stateStyles
             ]}
             onPress={() => this.handleBlockPress(i, j)}
+            onPressIn={() => {
+              // When the block is pressed, directly store which block it is
+              console.log(`🟦 Block at [${i},${j}] pressed`);
+              
+              // Store the current block for swipe origin
+              this.touchInfo = {
+                currentRow: i,
+                currentCol: j,
+                isTracking: true
+              };
+              
+              // Select this block visually
+              const { grid } = this.props.game;
+              let newGrid = grid.map(row => [...row]);
+              
+              // Clear any previous selection first
+              if (this.firstSelectedBlock) {
+                const { row, col } = this.firstSelectedBlock;
+                if (grid[row]?.[col] && grid[row][col].selected) {
+                  newGrid[row][col].selected = false;
+                }
+              }
+              
+              // Highlight this block
+              newGrid[i][j].selected = true;
+              this.props.createGrid(newGrid);
+              
+              // Store as first selected block
+              this.firstSelectedBlock = { row: i, col: j };
+            }}
             activeOpacity={0.7} // Give visual feedback when pressed
-            // Pass both row/col for direct position access
-            row={i}
-            col={j}
             accessible={true}
             accessibilityRole="button"
             accessibilityLabel={`Color block at row ${i+1}, column ${j+1}`}
