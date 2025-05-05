@@ -11,78 +11,96 @@ export function minMax(min, max) {
 
 // Create a level configuration
 export function createHueLevel(level) {
-  // Start with smaller grid for easier gameplay
-  let baseSize, gridSize, moveLimit, colorModifier, contrastMultiplier;
+  let baseSize, gridSize, moveLimit, colorModifier, contrastMultiplier, stage;
   
-  // Define grid size progression
-  // Keep at 5x5 for first 3 levels, then 6x6 for next 4 levels, etc.
   if (level <= 3) {
-    gridSize = 5; // First 3 levels: 5x5 grid
+    gridSize = 5;
   } else if (level <= 7) {
-    gridSize = 6; // Levels 4-7: 6x6 grid
+    gridSize = 6;
   } else if (level <= 12) {
-    gridSize = 7; // Levels 8-12: 7x7 grid
+    gridSize = 7;
   } else if (level <= 18) {
-    gridSize = 8; // Levels 13-18: 8x8 grid
+    gridSize = 8;
   } else {
-    gridSize = 9; // Level 19+: 9x9 grid (cap here for mobile)
+    gridSize = 9;
   }
-  
-  // Moves increase with level, but also with grid size
+
+  // Find the first level for the current grid size
+  let firstLevelForGridSize;
+  if (gridSize === 5) firstLevelForGridSize = 1;
+  else if (gridSize === 6) firstLevelForGridSize = 4;
+  else if (gridSize === 7) firstLevelForGridSize = 8;
+  else if (gridSize === 8) firstLevelForGridSize = 13;
+  else firstLevelForGridSize = 19;
+  stage = ((level - firstLevelForGridSize) % 3) + 1;
+
   moveLimit = 25 + (level * 5) + ((gridSize - 5) * 5);
-  
-  // Determine color modifier based on level
-  // For very early levels, use more distinctive color patterns
+
   if (level === 1) {
-    colorModifier = 1; // Start with the basic RGB pattern (highest contrast)
-    contrastMultiplier = 1.5; // Higher contrast for first level
+    colorModifier = 1;
+    contrastMultiplier = 1.5;
   } else if (level === 2) {
-    colorModifier = 4; // Use a different pattern with good contrast
-    contrastMultiplier = 1.4; // Still high contrast but slightly less
+    colorModifier = 4;
+    contrastMultiplier = 1.4;
   } else if (level === 3) {
-    colorModifier = 2; // Another distinct pattern
-    contrastMultiplier = 1.3; // Moderate-high contrast
+    colorModifier = 2;
+    contrastMultiplier = 1.3;
   } else {
-    // For later levels, use a wider variety of patterns
     colorModifier = (level % PUZZLE_COLOR_MODIFIER_MAX) + 1;
-    // Contrast gradually decreases for higher levels making the puzzle harder
     contrastMultiplier = Math.max(1.0, 1.3 - (level * 0.05));
   }
-  
-  console.log(`Creating level ${level} with gridSize: ${gridSize}, colorModifier: ${colorModifier}, moveLimit: ${moveLimit}, contrastMultiplier: ${contrastMultiplier}`);
-  
+
   return {
     level: level,
     gridSize: gridSize,
     colorModifier: colorModifier,
     moveLimit: moveLimit,
-    contrastMultiplier: contrastMultiplier
+    contrastMultiplier: contrastMultiplier,
+    stage: stage
   };
 }
 
-function generateRgbColor(i, j, gridSize, _modifier, x, contrastMultiplier = 1.0) {
-  var stepi = 255 / gridSize;
-  var stepj = 255 / gridSize;
-  
-  // Apply contrast multiplier to the step values
-  stepi = stepi * contrastMultiplier;
-  stepj = stepj * contrastMultiplier;
-  
-  // Clamp the values to ensure they stay within 0-255 range
-  var r =
-    _modifier % 2 === 0
-      ? Math.min(255, Math.max(0, Math.floor(255 - stepi * i)))
-      : Math.min(255, Math.max(0, Math.floor(0 + stepi * i)));
-  var g =
-    _modifier % 2 === 0
-      ? Math.min(255, Math.max(0, Math.floor(0 + stepj * j)))
-      : Math.min(255, Math.max(0, Math.floor(255 - stepj * j)));
-  var b = _modifier % 2 === 0 
-    ? Math.min(255, Math.max(0, x + i * contrastMultiplier))
-    : Math.min(255, Math.max(0, Math.floor(255 - stepi * i)));
+function generateRgbColor(i, j, gridSize, _modifier, x, contrastMultiplier = 1.0, stage = 1) {
+  var stepi = 255 / gridSize - 1;
+  var stepj = 255 / gridSize - 1;
+
+  // Progress from top-left to bottom-right
+  var progress = (i + j) / (2 * (gridSize - 1));
+
+  // Helper to blend base and contrast values
+  function blend(base, contrast) {
+    return Math.round(base * (1 - progress) + contrast * progress);
+  }
+
+  // Base values (no multiplier)
+  var rBase = _modifier % 2 === 0 ? 255 - stepi * i : 0 + stepi * i;
+  var gBase = _modifier % 2 === 0 ? 0 + stepj * j : 255 - stepj * j;
+  var bBase = _modifier % 2 === 0 ? x + i : 255 - stepi * i;
+
+  // Contrast values (with multiplier)
+  var rContrast = _modifier % 2 === 0 ? 255 - (stepi * i * contrastMultiplier) : 0 + (stepi * i * contrastMultiplier);
+  var gContrast = _modifier % 2 === 0 ? 0 + (stepj * j * contrastMultiplier) : 255 - (stepj * j * contrastMultiplier);
+  var bContrast = _modifier % 2 === 0 ? x + i * contrastMultiplier : 255 - (stepi * i * contrastMultiplier);
+
+  // Apply contrast multiplier to channels based on stage
+  var r = rBase, g = gBase, b = bBase;
+  if (stage === 1) {
+    b = blend(bBase, bContrast);
+  } else if (stage === 2) {
+    g = blend(gBase, gContrast);
+    b = blend(bBase, bContrast);
+  } else if (stage >= 3) {
+    r = blend(rBase, rContrast);
+    g = blend(gBase, gContrast);
+    b = blend(bBase, bContrast);
+  }
+
+  // Clamp values
+  r = Math.min(255, Math.max(0, Math.round(r)));
+  g = Math.min(255, Math.max(0, Math.round(g)));
+  b = Math.min(255, Math.max(0, Math.round(b)));
 
   var rgb;
-
   switch (_modifier) {
     case 2:
       rgb = "rgb(" + b + ", " + r + ", " + g + ")";
@@ -106,60 +124,26 @@ function generateRgbColor(i, j, gridSize, _modifier, x, contrastMultiplier = 1.0
 }
 
 // Generate the initial solved grid
-export function generateSolvedHueMoveGrid(size, modifier, contrastMultiplier = 1.0) {
+export function generateSolvedHueMoveGrid(size, modifier, contrastMultiplier = 1.0, stage = 1) {
   const grid = [];
-  
-  // Generate a random starting value for x (0-255) like the original
   const baseX = minMax(0, 255);
-  console.log(`Generating solved grid with size ${size}, color modifier ${modifier}, baseX ${baseX}, contrast ${contrastMultiplier}`);
-
-  // Create the solved grid with pieces in their correct positions
   for (let row = 0; row < size; row++) {
     grid[row] = [];
     for (let col = 0; col < size; col++) {
-      // Generate RGB color directly with the specific modifier for this level
-      // Pass the contrast multiplier to enhance color differences
-      const color = generateRgbColor(row, col, size, modifier, baseX, contrastMultiplier);
-      
-      // Check if this is a corner position
-      const isCorner = 
-        (row === 0 && col === 0) ||  // Top left
-        (row === 0 && col === size - 1) ||  // Top right
-        (row === size - 1 && col === 0) ||  // Bottom left
-        (row === size - 1 && col === size - 1);  // Bottom right
-        
+      const color = generateRgbColor(row, col, size, modifier, baseX, contrastMultiplier, stage);
+      const isCorner =
+        (row === 0 && col === 0) ||
+        (row === 0 && col === size - 1) ||
+        (row === size - 1 && col === 0) ||
+        (row === size - 1 && col === size - 1);
       grid[row][col] = {
         color: color,
         originalRow: row,
         originalCol: col,
-        isCorner: isCorner  // Explicitly mark corners
+        isCorner: isCorner
       };
     }
   }
-  
-  // Define corner positions and ensure they're correctly marked
-  const corners = [
-    { row: 0, col: 0 },                // Top Left
-    { row: 0, col: size - 1 },         // Top Right
-    { row: size - 1, col: 0 },         // Bottom Left
-    { row: size - 1, col: size - 1 }   // Bottom Right
-  ];
-  
-  // Force set the isCorner flag for these positions to ensure they're correct
-  corners.forEach(corner => {
-    if (grid[corner.row] && grid[corner.row][corner.col]) {
-      grid[corner.row][corner.col].isCorner = true;
-    }
-  });
-  
-  // Log corner colors to verify different gradients between levels
-  console.log(`Corners colors:
-    TL=(0,0): ${grid[0][0].color}, 
-    TR=(0,${size-1}): ${grid[0][size-1].color}, 
-    BL=(${size-1},0): ${grid[size-1][0].color}, 
-    BR=(${size-1},${size-1}): ${grid[size-1][size-1].color}
-  `);
-  
   return grid;
 }
 
