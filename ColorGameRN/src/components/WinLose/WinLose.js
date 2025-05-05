@@ -25,23 +25,31 @@ const WinLose = props => {
         <Text style={styles.bonusText}>Score multiplier: {nextLevelMultiplier}x</Text>
         <TouchableOpacity 
           onPress={() => {
-            // Reset win state first
-            if (props.didWin) {
-              props.didWin(null);
-            }
             // Move to the next level
             const nextLevel = level + 1;
-            // Reset match count
-            if (props.updateMatchesMade) {
-              props.updateMatchesMade(0);
-            }
-            // Update level
+            console.log(`WinLose: Moving from level ${level} to level ${nextLevel}`);
+            
+            // Update level in Redux first - this is crucial!
             if (props.updateLevel) {
               props.updateLevel(nextLevel);
             }
-            // Restart game (false means don't start over from level 1)
+            
+            // Reset match count if applicable
+            if (props.updateMatchesMade) {
+              props.updateMatchesMade(0);
+            }
+            
+            // Reset win state - do this after level update
+            if (props.didWin) {
+              props.didWin(null);
+            }
+            
+            // Restart game with continuation flag (false means don't reset to level 1)
             if (props.restart) {
-              props.restart(false);
+              // Add slight delay to ensure level update is processed
+              setTimeout(() => {
+                props.restart(false);
+              }, 100);
             }
           }} 
           style={styles.btn}

@@ -34,6 +34,7 @@ export default function GameReducer(state = initialState, action = {}) {
         hasWon: action.won
       };
     case types.LEVEL:
+      console.log('Updating level in Redux:', action.level);
       return {
         ...state,
         level: action.level

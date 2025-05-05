@@ -100,9 +100,20 @@ class AppContent extends Component {
   
   restart(startover) {
     const { game } = this.props;
+    
+    console.log(`App restart called with startover=${startover}, current level=${game.level}`);
+    
+    // Calculate appropriate game level for visual style
     let gameLevel = Math.ceil((game.level + 1) / 8) % 5;
     let shuffleColors = gamehelpers.fisherYates(colorArrays[gameLevel]);
-    let level = this.getLevel(game.level, game.gameMode);
+    
+    // Get the correct level configuration
+    // If not starting over, use current level from Redux
+    // If starting over, use level 1
+    const levelNumber = startover === true ? 1 : game.level; 
+    let level = this.getLevel(levelNumber, game.gameMode);
+    
+    console.log(`Restarting with level number: ${levelNumber}, game mode: ${game.gameMode}`);
 
     // reset game state (except score for cumulative scoring)
     this.props.updateClicks(0);
@@ -111,15 +122,12 @@ class AppContent extends Component {
     // Only reset score if starting over completely
     if (startover === true) {
       this.props.updateScore(0);
+      // When starting over, set level to 1
+      this.props.updateLevel(1);
     }
 
-    if (startover === true) {
-      level = this.getLevel(0, game.gameMode);
-      this.props.didWin(null);
-      this.props.updateLevel(0);
-    } else {
-      this.props.didWin(null);
-    }
+    // Make sure win state is reset
+    this.props.didWin(null);
 
     this.setState({
       colors: shuffleColors,

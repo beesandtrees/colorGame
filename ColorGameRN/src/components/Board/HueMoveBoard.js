@@ -36,6 +36,7 @@ export default class HueMoveBoard extends Component {
   componentDidUpdate(prevProps) {
     // If level changes, reinitialize the game
     if (prevProps.level?.level !== this.props.level?.level) {
+      console.log(`Level changed from ${prevProps.level?.level} to ${this.props.level?.level}, reinitializing game`);
       this.initGame();
     }
   }
@@ -44,6 +45,8 @@ export default class HueMoveBoard extends Component {
     try {      
       // Get level configuration with fallback
       const level = this.props?.level || { gridSize: 6, colorModifier: 1, moveLimit: 25 };
+      
+      console.log(`Initializing Hue Move game for level ${level.level}, color modifier: ${level.colorModifier}`);
       
       // Initialize corner positions based on the grid size
       const gridSize = level.gridSize || 6;
@@ -62,8 +65,12 @@ export default class HueMoveBoard extends Component {
         { row: gridSize - 1, col: gridSize - 1 }  // Bottom Right
       ];
 
-      // Create solved grid first
-      this.solvedGrid = hueMoveHelpers.generateSolvedHueMoveGrid(gridSize, level.colorModifier);
+      // Create solved grid first - ensure we use the current level's color modifier and contrast multiplier
+      this.solvedGrid = hueMoveHelpers.generateSolvedHueMoveGrid(
+        gridSize, 
+        level.colorModifier, 
+        level.contrastMultiplier || 1.0
+      );
       
       // Then create the shuffled grid for gameplay
       this.shuffledGrid = hueMoveHelpers.shuffleHueMoveGrid(this.solvedGrid);
@@ -95,7 +102,10 @@ export default class HueMoveBoard extends Component {
       
       // Render the solution first
       this.renderBoard(this.solvedGrid);
+      
+      console.log(`Game initialized with grid size ${gridSize}x${gridSize}, color modifier ${level.colorModifier}`);
     } catch (error) {
+      console.error('Error initializing game:', error);
     }
   }
   
@@ -106,6 +116,8 @@ export default class HueMoveBoard extends Component {
   
   // Start the game - switch from solution to shuffled board
   startGame = () => {    
+    console.log(`Starting game with level ${this.props.level?.level}`);
+    
     // Update Redux with the shuffled grid
     if (typeof this.props?.createGrid === 'function' && this.shuffledGrid) {
       this.props.createGrid(this.shuffledGrid);
@@ -174,21 +186,32 @@ export default class HueMoveBoard extends Component {
     
     // If no piece is selected, select this one
     if (selectedPiece === null) {
-      this.setState({ selectedPiece: index });
+      console.log(`Selecting piece at index ${index}`);
+      this.setState({ selectedPiece: index }, () => {
+        // Re-render the board immediately after state update to show selection
+        this.renderBoard(grid);
+      });
       return;
     }
     
     // If the same piece is selected, deselect it
     if (selectedPiece === index) {
-      this.setState({ selectedPiece: null });
+      console.log(`Deselecting piece at index ${index}`);
+      this.setState({ selectedPiece: null }, () => {
+        // Re-render the board immediately after state update to clear selection
+        this.renderBoard(grid);
+      });
       return;
     }
     
     // Otherwise, swap the pieces
-    this.swapPieces(selectedPiece, index);
+    console.log(`Swapping pieces at indices ${selectedPiece} and ${index}`);
     
-    // Deselect after swap
-    this.setState({ selectedPiece: null });
+    // Clear selection before swap to ensure no outline appears on any block
+    this.setState({ selectedPiece: null }, () => {
+      // Then swap the pieces after selection is cleared
+      this.swapPieces(selectedPiece, index);
+    });
   }
   
   swapPieces(index1, index2) {
@@ -242,6 +265,7 @@ export default class HueMoveBoard extends Component {
       return;
     }
     
+    console.log('Swapping pieces with NO selection active');
     
     // Swap the pieces
     const temp = newGrid[row1][col1];
@@ -250,7 +274,12 @@ export default class HueMoveBoard extends Component {
     
     // Update move counter
     const newMoves = this.state.moves + 1;
-    this.setState({ moves: newMoves });
+    
+    // Batch the state updates to prevent race conditions
+    this.setState({ 
+      moves: newMoves,
+      selectedPiece: null // Ensure selection is cleared
+    });
     
     // Update the moves counter in Redux
     if (typeof this.props?.updateClicks === 'function') {
@@ -262,8 +291,12 @@ export default class HueMoveBoard extends Component {
       this.props.createGrid(newGrid);
     }
     
-    // Re-render the board with the updated grid
-    this.renderBoard(newGrid);
+    // Re-render the board with the updated grid and no selection
+    const renderTimeout = setTimeout(() => {
+      console.log('Re-rendering after swap with NO selection');
+      this.renderBoard(newGrid);
+      clearTimeout(renderTimeout);
+    }, 50);
     
     // Check if puzzle is solved
     if (this.checkPuzzleSolved(newGrid)) {
@@ -331,19 +364,15 @@ export default class HueMoveBoard extends Component {
       this.props.updateScore(this.props.game.score + score);
     }
     
-    // Mark game as won
-    if (this.props.didWin) {
-      this.props.didWin(true);
-    }
-    
-    // Show congratulation message
+    // Add delay before showing winner modal so user can see completed board
     setTimeout(() => {
-      Alert.alert(
-        "Puzzle Solved!",
-        `You completed the puzzle in ${this.state.moves} moves and earned ${score} points!`,
-        [{ text: "Continue", style: "default" }]
-      );
-    }, 500);
+      // Mark game as won - this will trigger the WinLose modal
+      if (this.props.didWin) {
+        this.props.didWin(true);
+      }
+    }, 1000); // 1 second delay
+    
+    // No need for an additional alert - the WinLose component will handle display
   }
   
   handleGameOver(won) {
@@ -353,16 +382,7 @@ export default class HueMoveBoard extends Component {
       this.props.didWin(won);
     }
     
-    if (!won) {
-      // Show game over message
-      setTimeout(() => {
-        Alert.alert(
-          "Game Over",
-          "You've run out of moves. Try again!",
-          [{ text: "OK", style: "default" }]
-        );
-      }, 500);
-    }
+    // No need for an additional alert - the WinLose component will handle display
   }
   
   renderBoard(grid) {
@@ -373,6 +393,8 @@ export default class HueMoveBoard extends Component {
     const gridSize = grid.length;
     const pieces = [];
     const { selectedPiece, boardSize } = this.state;
+    
+    console.log(`Rendering board with selectedPiece: ${selectedPiece}`);
     
     // Calculate dimensions with a small gap between pieces
     const gap = 2; // Gap between pieces in pixels
@@ -407,8 +429,12 @@ export default class HueMoveBoard extends Component {
           (row === gridSize - 1 && col === 0) ||
           (row === gridSize - 1 && col === gridSize - 1);
         
-        // Check if this piece is selected
-        const isSelected = selectedPiece === index;
+        // Check if this piece is selected - ONLY true if selectedPiece matches exactly
+        const isSelected = (selectedPiece !== null) && (selectedPiece === index);
+        
+        if (isSelected) {
+          console.log(`Rendering piece at index ${index} as SELECTED`);
+        }
         
         pieces.push(
           <TouchableOpacity
@@ -421,7 +447,7 @@ export default class HueMoveBoard extends Component {
                 height: pieceSize,
                 left: xPos,
                 top: yPos,
-                borderWidth: isSelected ? 2 : 0,
+                borderWidth: isSelected ? 3 : 0,
                 borderColor: isSelected ? '#FFFFFF' : 'transparent'
               }
             ]}
@@ -477,7 +503,7 @@ export default class HueMoveBoard extends Component {
             {blocks}
           </View>
           
-          {/* Only Start Game button, no instructions or other buttons */}
+          {/* Only Start Game or Restart Current Level buttons */}
           <View style={styles.instructionsContainer}>
             {!gameStarted ? (
               <TouchableOpacity 
@@ -494,7 +520,7 @@ export default class HueMoveBoard extends Component {
                 onPress={() => this.initGame()}
               >
                 <Text style={styles.buttonText}>
-                  New Game
+                  Restart Level {this.props.level?.level || 1}
                 </Text>
               </TouchableOpacity>
             )}

@@ -11,38 +11,76 @@ export function minMax(min, max) {
 
 // Create a level configuration
 export function createHueLevel(level) {
-  // Base grid size - matching original game starting at 6x6
-  const baseSize = 6;
+  // Start with smaller grid for easier gameplay
+  let baseSize, gridSize, moveLimit, colorModifier, contrastMultiplier;
   
-  // Increase size every few levels, but cap at 10x10 for mobile playability
-  const gridSize = Math.min(10, baseSize + Math.floor((level - 1) / 3));
+  // Define grid size progression
+  // Keep at 5x5 for first 3 levels, then 6x6 for next 4 levels, etc.
+  if (level <= 3) {
+    gridSize = 5; // First 3 levels: 5x5 grid
+  } else if (level <= 7) {
+    gridSize = 6; // Levels 4-7: 6x6 grid
+  } else if (level <= 12) {
+    gridSize = 7; // Levels 8-12: 7x7 grid
+  } else if (level <= 18) {
+    gridSize = 8; // Levels 13-18: 8x8 grid
+  } else {
+    gridSize = 9; // Level 19+: 9x9 grid (cap here for mobile)
+  }
   
-  // Color modifier changes the gradient pattern - matching original logic
-  const colorModifier = (level % PUZZLE_COLOR_MODIFIER_MAX) + 1;
+  // Moves increase with level, but also with grid size
+  moveLimit = 25 + (level * 5) + ((gridSize - 5) * 5);
   
-  // More moves for higher levels
-  const moveLimit = 25 + (level * 5);
+  // Determine color modifier based on level
+  // For very early levels, use more distinctive color patterns
+  if (level === 1) {
+    colorModifier = 1; // Start with the basic RGB pattern (highest contrast)
+    contrastMultiplier = 1.5; // Higher contrast for first level
+  } else if (level === 2) {
+    colorModifier = 4; // Use a different pattern with good contrast
+    contrastMultiplier = 1.4; // Still high contrast but slightly less
+  } else if (level === 3) {
+    colorModifier = 2; // Another distinct pattern
+    contrastMultiplier = 1.3; // Moderate-high contrast
+  } else {
+    // For later levels, use a wider variety of patterns
+    colorModifier = (level % PUZZLE_COLOR_MODIFIER_MAX) + 1;
+    // Contrast gradually decreases for higher levels making the puzzle harder
+    contrastMultiplier = Math.max(1.0, 1.3 - (level * 0.05));
+  }
+  
+  console.log(`Creating level ${level} with gridSize: ${gridSize}, colorModifier: ${colorModifier}, moveLimit: ${moveLimit}, contrastMultiplier: ${contrastMultiplier}`);
   
   return {
     level: level,
     gridSize: gridSize,
     colorModifier: colorModifier,
-    moveLimit: moveLimit
+    moveLimit: moveLimit,
+    contrastMultiplier: contrastMultiplier
   };
 }
 
-function generateRgbColor(i, j, gridSize, _modifier, x) {
+function generateRgbColor(i, j, gridSize, _modifier, x, contrastMultiplier = 1.0) {
   var stepi = 255 / gridSize;
   var stepj = 255 / gridSize;
+  
+  // Apply contrast multiplier to the step values
+  stepi = stepi * contrastMultiplier;
+  stepj = stepj * contrastMultiplier;
+  
+  // Clamp the values to ensure they stay within 0-255 range
   var r =
     _modifier % 2 === 0
-      ? Math.floor(255 - stepi * i)
-      : Math.floor(0 + stepi * i);
+      ? Math.min(255, Math.max(0, Math.floor(255 - stepi * i)))
+      : Math.min(255, Math.max(0, Math.floor(0 + stepi * i)));
   var g =
     _modifier % 2 === 0
-      ? Math.floor(0 + stepj * j)
-      : Math.floor(255 - stepj * j);
-  var b = _modifier % 2 === 0 ? x + i : Math.floor(255 - stepi * i);
+      ? Math.min(255, Math.max(0, Math.floor(0 + stepj * j)))
+      : Math.min(255, Math.max(0, Math.floor(255 - stepj * j)));
+  var b = _modifier % 2 === 0 
+    ? Math.min(255, Math.max(0, x + i * contrastMultiplier))
+    : Math.min(255, Math.max(0, Math.floor(255 - stepi * i)));
+
   var rgb;
 
   switch (_modifier) {
@@ -67,21 +105,21 @@ function generateRgbColor(i, j, gridSize, _modifier, x) {
   return rgb;
 }
 
-
 // Generate the initial solved grid
-export function generateSolvedHueMoveGrid(size, modifier) {
+export function generateSolvedHueMoveGrid(size, modifier, contrastMultiplier = 1.0) {
   const grid = [];
   
   // Generate a random starting value for x (0-255) like the original
   const baseX = minMax(0, 255);
-  console.log(`Using color modifier ${modifier} with baseX ${baseX}`);
+  console.log(`Generating solved grid with size ${size}, color modifier ${modifier}, baseX ${baseX}, contrast ${contrastMultiplier}`);
 
   // Create the solved grid with pieces in their correct positions
   for (let row = 0; row < size; row++) {
     grid[row] = [];
     for (let col = 0; col < size; col++) {
-      // Generate RGB color directly
-      const color = generateRgbColor(row, col, size, modifier, baseX);
+      // Generate RGB color directly with the specific modifier for this level
+      // Pass the contrast multiplier to enhance color differences
+      const color = generateRgbColor(row, col, size, modifier, baseX, contrastMultiplier);
       
       // Check if this is a corner position
       const isCorner = 
@@ -114,11 +152,12 @@ export function generateSolvedHueMoveGrid(size, modifier) {
     }
   });
   
-  console.log(`Locked corners: 
-    TL=(0,0), 
-    TR=(0,${size-1}), 
-    BL=(${size-1},0), 
-    BR=(${size-1},${size-1})
+  // Log corner colors to verify different gradients between levels
+  console.log(`Corners colors:
+    TL=(0,0): ${grid[0][0].color}, 
+    TR=(0,${size-1}): ${grid[0][size-1].color}, 
+    BL=(${size-1},0): ${grid[size-1][0].color}, 
+    BR=(${size-1},${size-1}): ${grid[size-1][size-1].color}
   `);
   
   return grid;
