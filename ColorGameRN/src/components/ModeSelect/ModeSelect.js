@@ -34,12 +34,12 @@ const ModeSelect = ({ visible, onSelect, onClose }) => {
           </TouchableOpacity>
           
           <TouchableOpacity 
-            style={[styles.modeButton, { backgroundColor: '#e8f4ff' }]} 
-            onPress={() => onSelect('prototype')}
+            style={styles.modeButton} 
+            onPress={() => onSelect('huemove')}
           >
-            <Text style={[styles.modeTitle, { color: '#0088ff' }]}>Animated Prototype</Text>
+            <Text style={styles.modeTitle}>Hue Move Mode</Text>
             <Text style={styles.modeDescription}>
-              Match 3 with smooth animations and effects
+              Swap color tiles to arrange them in their original gradient pattern
             </Text>
           </TouchableOpacity>
           

@@ -10,13 +10,14 @@ import * as gameActions from './src/actions';
 import { colorArrays } from './src/helpers/constants.js';
 import * as gamehelpers from './src/helpers/helpers.js';
 import * as match3Helpers from './src/helpers/match3Mode.js';
+import * as hueMoveHelpers from './src/helpers/hueMoveMode.js';
 
 import Logo from './src/components/Logo/Logo.js';
 import Board from './src/components/Board/Board.js';
 import Match3Board from './src/components/Board/Match3Board.js';
+import HueMoveBoard from './src/components/Board/HueMoveBoard.js';
 import WinLose from './src/components/WinLose/WinLose.js';
 import ModeSelect from './src/components/ModeSelect/ModeSelect.js';
-import Match3Prototype from './src/prototype/Match3Prototype.js';
 
 const store = createStore(rootReducer);
 
@@ -35,14 +36,15 @@ class Info extends Component {
         "• MATCH 3 or more blocks of the same color\n" + 
         "• EARN points for each match you make\n\n" +
         "You have a limited number of moves - make them count!";
-    } else if (gameMode === 'prototype') {
+    } else if (gameMode === 'huemove') {
       instructions = 
-        "Animated Prototype:\n\n" +
-        "• TAP a block to select it\n" +
-        "• TAP an adjacent block to swap them\n" +
-        "• WATCH the smooth animations as blocks move\n" +
-        "• SEE special effects for matches and new blocks\n\n" +
-        "This is a prototype with enhanced animations!";
+        "Hue Move Mode:\n\n" +
+        "• TAP a tile to select it\n" +
+        "• TAP another tile to swap them\n" +
+        "• ARRANGE all tiles to recreate the original color gradient\n" +
+        "• CORNER tiles are locked and cannot be moved\n\n" +
+        "Look at the corner pieces - they show what the color pattern should be. The goal is to arrange all colors into a smooth gradient that flows across the grid.\n\n" +
+        "Strategy tip: Work on one row or column at a time, starting from the corners!";
     }
     
     return (
@@ -89,6 +91,8 @@ class AppContent extends Component {
       return gamehelpers.createLevel(levelNumber);
     } else if (gameMode === 'match3') {
       return match3Helpers.createMatch3Level(levelNumber);
+    } else if (gameMode === 'huemove') {
+      return hueMoveHelpers.createHueLevel(levelNumber);
     }
     // Default to classic mode if unknown
     return gamehelpers.createLevel(levelNumber);
@@ -134,6 +138,47 @@ class AppContent extends Component {
         level.numberofrows,
         level.numberofcolors
       );
+    } else if (game.gameMode === 'huemove') {
+      try {
+        console.log('Initializing HueMove grid in App.js');
+        // Make sure we have required values with defaults
+        const gridSize = level.gridSize || 6;
+        const colorModifier = level.colorModifier || 1;
+        
+        // Create solved grid
+        const solvedGrid = hueMoveHelpers.generateSolvedHueMoveGrid(
+          gridSize,
+          colorModifier
+        );
+        
+        if (!solvedGrid) {
+          console.error('Failed to generate solved grid in App.js');
+          // Create a default grid as fallback
+          grid = Array(gridSize).fill().map(() => Array(gridSize).fill({
+            color: '#cccccc',
+            originalRow: 0,
+            originalCol: 0,
+            locked: false
+          }));
+        } else {
+          // Shuffle it (except corners)
+          grid = hueMoveHelpers.shuffleHueMoveGrid(solvedGrid);
+          
+          if (!grid) {
+            console.error('Failed to shuffle grid in App.js');
+            grid = solvedGrid; // Use unshuffled grid as fallback
+          }
+        }
+      } catch (error) {
+        console.error('Error initializing HueMove grid in App.js:', error);
+        // Create a simple fallback grid
+        grid = Array(6).fill().map(() => Array(6).fill({
+          color: '#cccccc',
+          originalRow: 0,
+          originalCol: 0,
+          locked: false
+        }));
+      }
     }
 
     this.props.createGrid(grid);
@@ -240,11 +285,11 @@ class AppContent extends Component {
           </Text>
         </View>
       );
-    } else if (game.gameMode === 'prototype') {
+    } else if (game.gameMode === 'huemove') {
       return (
         <View style={styles.header}>
           <Logo />
-          <Text style={[styles.title, { color: '#0088ff' }]}>Animated Match 3</Text>
+          <Text style={styles.title}>Hue Move</Text>
           <View style={styles.headerButtons}>
             <TouchableOpacity 
               style={styles.headerButton}
@@ -259,9 +304,20 @@ class AppContent extends Component {
               <Text style={styles.infoButtonText}>?</Text>
             </TouchableOpacity>
           </View>
-          <Text style={styles.goalText}>
-            Animated prototype with smooth transitions and effects
-          </Text>
+          <View style={styles.statsContainer}>
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>Score</Text>
+              <Text style={styles.statValue}>{game.score}</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>Level</Text>
+              <Text style={styles.statValue}>{level.level}</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>Moves</Text>
+              <Text style={styles.statValue}>{level.moveLimit - game.clicks}</Text>
+            </View>
+          </View>
         </View>
       );
     }
@@ -308,24 +364,26 @@ class AppContent extends Component {
           restart={(startover) => this.restart(startover)}
         />
       );
-    } else if (game.gameMode === 'prototype') {
-      // Return the prototype component
+    } else if (game.gameMode === 'huemove') {
       return (
-        <View style={{ flex: 1 }}>
-          <Match3Prototype />
-        </View>
+        <HueMoveBoard
+          colors={this.state.colors}
+          grid={game.grid}
+          game={game}
+          updateClicks={this.props.updateClicks}
+          updateScore={this.props.updateScore}
+          updateLevel={this.props.updateLevel}
+          createGrid={this.props.createGrid}
+          loadBlocks={this.props.loadBlocks}
+          didWin={this.props.didWin}
+          level={level}
+          restart={(startover) => this.restart(startover)}
+        />
       );
     }
   }
   
-  renderFooter() {
-    const { game } = this.props;
-    
-    // Don't show footer for prototype mode
-    if (game.gameMode === 'prototype') {
-      return null;
-    }
-    
+  renderFooter() {    
     return (
       <View style={styles.footer}>
         <TouchableOpacity 
@@ -346,7 +404,7 @@ class AppContent extends Component {
       <SafeAreaView 
         style={[
           styles.container, 
-          { backgroundColor: game.gameMode === 'prototype' ? '#f8f9fa' : baseColor }
+          { backgroundColor: game.gameMode === 'huemove' ? '#333333' : baseColor }
         ]}
       >
         <StatusBar style="light" />
@@ -354,7 +412,6 @@ class AppContent extends Component {
         {this.renderHeader()}
         {this.renderBoard()}
         
-        {game.gameMode !== 'prototype' && (
           <WinLose
             won={game.hasWon}
             restart={startover => this.restart(startover)}
@@ -363,7 +420,6 @@ class AppContent extends Component {
             updateMatchesMade={this.props.updateMatchesMade}
             didWin={this.props.didWin}
           />
-        )}
         
         {this.renderFooter()}
         
