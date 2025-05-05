@@ -383,7 +383,14 @@ class AppContent extends Component {
     }
   }
   
-  renderFooter() {    
+  renderFooter() {
+    const { game } = this.props;
+    
+    // Don't show the footer New Game button for Hue Move mode
+    if (game.gameMode === 'huemove') {
+      return null;
+    }
+    
     return (
       <View style={styles.footer}>
         <TouchableOpacity 

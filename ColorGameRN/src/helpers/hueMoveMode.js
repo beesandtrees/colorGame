@@ -31,91 +31,57 @@ export function createHueLevel(level) {
   };
 }
 
-// Generate HSL color for a position - directly matching original logic
-function generateHslColor(row, col, modifier) {
-  let h, s, l;
-  
-  // Exactly following the logic of the hsl() function in the original script.js
-  const x = (row + col) * 20; // Similar to how x is incremented in the original game
+function generateRgbColor(i, j, gridSize, _modifier, x) {
+  var stepi = 255 / gridSize;
+  var stepj = 255 / gridSize;
+  var r =
+    _modifier % 2 === 0
+      ? Math.floor(255 - stepi * i)
+      : Math.floor(0 + stepi * i);
+  var g =
+    _modifier % 2 === 0
+      ? Math.floor(0 + stepj * j)
+      : Math.floor(255 - stepj * j);
+  var b = _modifier % 2 === 0 ? x + i : Math.floor(255 - stepi * i);
+  var rgb;
 
-  if (modifier % 2 === 0) {
-    h = Math.floor(360 - (row * col * 3)) % 360;
-    s = 80;
-    l = 50;
-  } else {
-    h = Math.floor(120 + (row + col) * 10) % 360;
-    s = 90;
-    l = 60;
-  }
-  
-  // Apply modifier transformations - more closely matching the original logic
-  switch (modifier) {
+  switch (_modifier) {
     case 2:
-      h = (h + 90) % 360;
+      rgb = "rgb(" + b + ", " + r + ", " + g + ")";
       break;
     case 3:
-      s = 100;
-      l = 50; // Match the original more closely
+      rgb = "rgb(" + g + ", " + b + ", " + r + ")";
       break;
     case 4:
-      l = Math.max(40, Math.min(75, l + (row - col) * 3));
+      rgb = "rgb(" + r + ", " + b + ", " + g + ")";
       break;
     case 5:
-      h = (h + 180) % 360;
+      rgb = "rgb(" + b + ", " + g + ", " + r + ")";
       break;
     case 6:
-      h = (h + 30 + row * 5) % 360;
+      rgb = "rgb(" + g + ", " + r + ", " + b + ")";
       break;
-    case 7:
-      h = (h + 270 + col * 5) % 360;
-      break;
+    default:
+      rgb = "rgb(" + r + ", " + g + ", " + b + ")";
   }
-  
-  return { h, s, l };
+  return rgb;
 }
 
-// Convert HSL to RGB string for React Native
-export function hslToRgb(h, s, l) {
-  // Normalize values
-  h = h / 360;
-  s = s / 100;
-  l = l / 100;
-  
-  let r, g, b;
-  
-  if (s === 0) {
-    r = g = b = l; // achromatic
-  } else {
-    const hue2rgb = (p, q, t) => {
-      if (t < 0) t += 1;
-      if (t > 1) t -= 1;
-      if (t < 1/6) return p + (q - p) * 6 * t;
-      if (t < 1/2) return q;
-      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
-      return p;
-    };
-    
-    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-    const p = 2 * l - q;
-    
-    r = hue2rgb(p, q, h + 1/3);
-    g = hue2rgb(p, q, h);
-    b = hue2rgb(p, q, h - 1/3);
-  }
-  
-  return `rgb(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)})`;
-}
 
 // Generate the initial solved grid
 export function generateSolvedHueMoveGrid(size, modifier) {
   const grid = [];
   
+  // Generate a random starting value for x (0-255) like the original
+  const baseX = minMax(0, 255);
+  console.log(`Using color modifier ${modifier} with baseX ${baseX}`);
+
   // Create the solved grid with pieces in their correct positions
   for (let row = 0; row < size; row++) {
     grid[row] = [];
     for (let col = 0; col < size; col++) {
-      const { h, s, l } = generateHslColor(row, col, modifier);
-      const color = hslToRgb(h, s, l);
+      // Generate RGB color directly
+      const color = generateRgbColor(row, col, size, modifier, baseX);
       
       // Check if this is a corner position
       const isCorner = 

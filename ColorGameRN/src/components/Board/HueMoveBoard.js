@@ -19,8 +19,14 @@ export default class HueMoveBoard extends Component {
       moves: 0,
       gameOver: false,
       showDebugInfo: false,
-      boardSize: 0 // Will be set based on measurement
+      boardSize: 0, // Will be set based on measurement
+      showingSolution: true, // Start by showing the solution
+      gameStarted: false // Game hasn't started until user clicks Start
     };
+    
+    // Keep track of both the solved and shuffled grids
+    this.solvedGrid = null;
+    this.shuffledGrid = null;
   }
   
   componentDidMount() {
@@ -35,9 +41,7 @@ export default class HueMoveBoard extends Component {
   }
   
   initGame() {
-    try {
-      console.log('Initializing Hue Move game');
-      
+    try {      
       // Get level configuration with fallback
       const level = this.props?.level || { gridSize: 6, colorModifier: 1, moveLimit: 25 };
       
@@ -57,41 +61,41 @@ export default class HueMoveBoard extends Component {
         { row: gridSize - 1, col: 0 },     // Bottom Left
         { row: gridSize - 1, col: gridSize - 1 }  // Bottom Right
       ];
-      
-      // Log corner positions for debugging
-      console.log(`Corner positions initialized:
-        topLeft: ${this.topLeft} = (0,0)
-        topRight: ${this.topRight} = (0,${gridSize-1})
-        bottomLeft: ${this.bottomLeft} = (${gridSize-1},0)
-        bottomRight: ${this.bottomRight} = (${gridSize-1},${gridSize-1})
-      `);
-      
-      console.log(`Grid size: ${gridSize}x${gridSize}`);
-      console.log(`Corner positions: TL=${this.topLeft}, TR=${this.topRight}, BL=${this.bottomLeft}, BR=${this.bottomRight}`);
-      
+
       // Create solved grid first
-      const solvedGrid = hueMoveHelpers.generateSolvedHueMoveGrid(gridSize, level.colorModifier);
+      this.solvedGrid = hueMoveHelpers.generateSolvedHueMoveGrid(gridSize, level.colorModifier);
       
-      // Then shuffle it for the initial game state
-      const shuffledGrid = hueMoveHelpers.shuffleHueMoveGrid(solvedGrid);
+      // Then create the shuffled grid for gameplay
+      this.shuffledGrid = hueMoveHelpers.shuffleHueMoveGrid(this.solvedGrid);
       
-      // Update the grid in Redux
+      // Reset game state - start by showing solution
+      this.setState({ 
+        moves: 0, 
+        selectedPiece: null,
+        gameOver: false,
+        showDebugInfo: false,
+        showingSolution: true,
+        gameStarted: false
+      });
+      
+      // Update the grid in Redux - start with the solved grid for preview
       if (typeof this.props?.createGrid === 'function') {
-        this.props.createGrid(shuffledGrid);
+        this.props.createGrid(this.solvedGrid);
       }
       
-      // Reset move counter
-      this.setState({ moves: 0, selectedPiece: null });
+      // Reset moves in Redux if available
       if (typeof this.props?.updateClicks === 'function') {
         this.props.updateClicks(0);
       }
       
-      // Render the pieces
-      this.renderBoard(shuffledGrid);
+      // Reset win state if previously won
+      if (typeof this.props?.didWin === 'function') {
+        this.props.didWin(null);
+      }
       
-      console.log('Hue Move game initialized successfully');
+      // Render the solution first
+      this.renderBoard(this.solvedGrid);
     } catch (error) {
-      console.error('Error initializing Hue Move game:', error);
     }
   }
   
@@ -100,29 +104,69 @@ export default class HueMoveBoard extends Component {
     this.setState({ boardSize: width });
   }
   
+  // Start the game - switch from solution to shuffled board
+  startGame = () => {    
+    // Update Redux with the shuffled grid
+    if (typeof this.props?.createGrid === 'function' && this.shuffledGrid) {
+      this.props.createGrid(this.shuffledGrid);
+    }
+    
+    // Update state to show we're now playing the game
+    this.setState({
+      showingSolution: false,
+      gameStarted: true,
+      moves: 0,
+      selectedPiece: null
+    });
+    
+    // Render the shuffled board
+    this.renderBoard(this.shuffledGrid);
+  }
+  
+  // We no longer need to toggle solution during gameplay, just keep for compatibility
+  toggleSolution = () => {
+    // No-op since we removed this functionality
+  }
+  
   handlePiecePress(index) {
+    // If we're showing the solution or game hasn't started yet, don't allow piece interaction
+    if (this.state.showingSolution || !this.state.gameStarted) {
+      return;
+    }
+    
     const { grid } = this.props.game || {};
-    if (!grid) return;
+    if (!grid || !Array.isArray(grid)) {
+      return;
+    }
     
     // Convert flat index to 2D grid coordinates
-    const gridSize = Math.sqrt(grid.length || 0);
+    const gridSize = grid.length;
     const row = Math.floor(index / gridSize);
     const col = index % gridSize;
+        
+    // Validate row and column are in bounds
+    if (row < 0 || row >= gridSize || col < 0 || col >= gridSize) {
+      return;
+    }
     
-    console.log(`Piece pressed at index ${index} (row=${row}, col=${col})`);
+    // Check if the grid position exists
+    if (!grid[row] || !grid[row][col]) {
+      return;
+    }
     
-    // Convert 2D coordinates to get the piece
+    // Get the piece at this position
     const piece = grid[row][col];
     
-    // Check if this is a locked corner piece (using either isCorner flag or indices)
-    if (
-      piece.isCorner === true ||
-      index === this.topLeft ||
-      index === this.topRight ||
-      index === this.bottomLeft ||
-      index === this.bottomRight
-    ) {
-      console.log(`Corner piece at index ${index} (row=${row}, col=${col}) is locked`);
+    // Safely check if this is a corner piece
+    const isCorner = 
+      (piece && piece.isCorner === true) ||
+      (row === 0 && col === 0) ||
+      (row === 0 && col === gridSize - 1) ||
+      (row === gridSize - 1 && col === 0) ||
+      (row === gridSize - 1 && col === gridSize - 1);
+    
+    // Don't allow selecting corner pieces
+    if (isCorner) {
       return;
     }
     
@@ -149,14 +193,27 @@ export default class HueMoveBoard extends Component {
   
   swapPieces(index1, index2) {
     const { grid } = this.props.game || {};
-    if (!grid) return;
+    if (!grid || !Array.isArray(grid)) {
+      return;
+    }
     
     // Convert flat indices to 2D coordinates
-    const gridSize = Math.sqrt(grid.length || 0);
+    const gridSize = grid.length;
     const row1 = Math.floor(index1 / gridSize);
     const col1 = index1 % gridSize;
     const row2 = Math.floor(index2 / gridSize);
     const col2 = index2 % gridSize;
+    
+    // Validate positions are in bounds
+    if (row1 < 0 || row1 >= gridSize || col1 < 0 || col1 >= gridSize ||
+        row2 < 0 || row2 >= gridSize || col2 < 0 || col2 >= gridSize) {
+      return;
+    }
+    
+    // Validate grid positions exist
+    if (!grid[row1] || !grid[row1][col1] || !grid[row2] || !grid[row2][col2]) {
+      return;
+    }
     
     // Create a deep copy of the grid
     const newGrid = JSON.parse(JSON.stringify(grid));
@@ -165,19 +222,26 @@ export default class HueMoveBoard extends Component {
     const piece1 = newGrid[row1][col1];
     const piece2 = newGrid[row2][col2];
     
-    // Check if either piece is a locked corner (using either the isCorner flag or index)
-    if (
-      piece1.isCorner === true || piece2.isCorner === true ||
-      index1 === this.topLeft || index1 === this.topRight || 
-      index1 === this.bottomLeft || index1 === this.bottomRight ||
-      index2 === this.topLeft || index2 === this.topRight || 
-      index2 === this.bottomLeft || index2 === this.bottomRight
-    ) {
-      console.log("Cannot swap corner pieces");
+    // Safely check if either piece is a corner
+    const isCorner1 = 
+      (piece1 && piece1.isCorner === true) ||
+      (row1 === 0 && col1 === 0) ||
+      (row1 === 0 && col1 === gridSize - 1) ||
+      (row1 === gridSize - 1 && col1 === 0) ||
+      (row1 === gridSize - 1 && col1 === gridSize - 1);
+      
+    const isCorner2 = 
+      (piece2 && piece2.isCorner === true) ||
+      (row2 === 0 && col2 === 0) ||
+      (row2 === 0 && col2 === gridSize - 1) ||
+      (row2 === gridSize - 1 && col2 === 0) ||
+      (row2 === gridSize - 1 && col2 === gridSize - 1);
+    
+    // Don't allow swapping with corner pieces
+    if (isCorner1 || isCorner2) {
       return;
     }
     
-    console.log(`Swapping pieces: [${row1},${col1}] (${index1}) <-> [${row2},${col2}] (${index2})`);
     
     // Swap the pieces
     const temp = newGrid[row1][col1];
@@ -201,14 +265,6 @@ export default class HueMoveBoard extends Component {
     // Re-render the board with the updated grid
     this.renderBoard(newGrid);
     
-    // Debug: Verify corner positions are locked and dots are showing
-    console.log(`Corners after swap:
-      topLeft (${this.topLeft}): ${JSON.stringify(newGrid[0][0])}
-      topRight (${this.topRight}): ${JSON.stringify(newGrid[0][Math.sqrt(newGrid.length)-1])}
-      bottomLeft (${this.bottomLeft}): ${JSON.stringify(newGrid[Math.sqrt(newGrid.length)-1][0])}
-      bottomRight (${this.bottomRight}): ${JSON.stringify(newGrid[Math.sqrt(newGrid.length)-1][Math.sqrt(newGrid.length)-1])}
-    `);
-    
     // Check if puzzle is solved
     if (this.checkPuzzleSolved(newGrid)) {
       this.handlePuzzleSolved();
@@ -222,18 +278,40 @@ export default class HueMoveBoard extends Component {
   }
   
   checkPuzzleSolved(grid) {
-    if (!grid) return false;
+    if (!grid || !Array.isArray(grid) || grid.length === 0) {
+      return false;
+    }
     
     // Check if each piece is in its original position
     for (let row = 0; row < grid.length; row++) {
+      if (!grid[row] || !Array.isArray(grid[row])) {
+        return false;
+      }
+      
       for (let col = 0; col < grid[row].length; col++) {
         const piece = grid[row][col];
-        if (piece.originalRow !== row || piece.originalCol !== col) {
+        
+        // Skip missing pieces (though this shouldn't happen)
+        if (!piece) {
+          return false;
+        }
+        
+        // Skip checking corner pieces since they never move
+        const isCorner = 
+          (piece.isCorner === true) ||
+          (row === 0 && col === 0) ||
+          (row === 0 && col === grid.length - 1) ||
+          (row === grid.length - 1 && col === 0) ||
+          (row === grid.length - 1 && col === grid.length - 1);
+          
+        if (!isCorner && (piece.originalRow !== row || piece.originalCol !== col)) {
+          // Piece is not in its original position
           return false;
         }
       }
     }
     
+    // If we got here, all pieces are in their correct positions
     return true;
   }
   
@@ -289,7 +367,6 @@ export default class HueMoveBoard extends Component {
   
   renderBoard(grid) {
     if (!grid || !Array.isArray(grid) || grid.length === 0) {
-      console.warn('Invalid grid provided to renderBoard');
       return;
     }
     
@@ -304,18 +381,14 @@ export default class HueMoveBoard extends Component {
     
     // If we don't have a valid board size yet, don't render pieces
     if (pieceSize <= 0) {
-      console.log('Board not measured yet, deferring piece rendering');
       return;
     }
-    
-    console.log(`Rendering board with grid size ${gridSize}x${gridSize}, piece size: ${pieceSize}, board size: ${boardSize}`);
-    
+        
     // Explicitly iterate through all grid positions
     for (let row = 0; row < gridSize; row++) {
       for (let col = 0; col < gridSize; col++) {
         // Skip if grid position doesn't exist
         if (!grid[row] || !grid[row][col]) {
-          console.warn(`Missing grid position at [${row},${col}]`);
           continue;
         }
         
@@ -333,11 +406,6 @@ export default class HueMoveBoard extends Component {
           (row === 0 && col === gridSize - 1) ||
           (row === gridSize - 1 && col === 0) ||
           (row === gridSize - 1 && col === gridSize - 1);
-        
-        // Debug logging for corners
-        if (isCorner) {
-          console.log(`Corner piece at position [${row},${col}], index=${index}, x=${xPos}, y=${yPos}`);
-        }
         
         // Check if this piece is selected
         const isSelected = selectedPiece === index;
@@ -381,9 +449,6 @@ export default class HueMoveBoard extends Component {
       }
     }
     
-    // Log the number of pieces generated
-    console.log(`Generated ${pieces.length} pieces for a ${gridSize}x${gridSize} grid`);
-    
     // Load the pieces into the Redux state
     if (typeof this.props?.loadBlocks === 'function') {
       this.props.loadBlocks(pieces);
@@ -392,7 +457,7 @@ export default class HueMoveBoard extends Component {
   
   render() {
     const { game } = this.props || {};
-    const { gameOver, moves } = this.state;
+    const { gameOver, moves, showingSolution, gameStarted } = this.state;
     const level = this.props.level || { level: 1, moveLimit: 25 };
     const blocks = game && game.blocks ? game.blocks : [];
     
@@ -402,12 +467,9 @@ export default class HueMoveBoard extends Component {
           styles.gameBoard,
           gameOver && styles.gameOver
         ]}>
-          <View style={styles.movesContainer}>
-            <Text style={styles.movesText}>
-              Level {level.level} • Moves: {moves}/{level.moveLimit}
-            </Text>
-          </View>
+          {/* No header as per the fixes image */}
           
+          {/* Board area */}
           <View 
             style={styles.grid}
             onLayout={this.handleBoardLayout}
@@ -415,19 +477,27 @@ export default class HueMoveBoard extends Component {
             {blocks}
           </View>
           
+          {/* Only Start Game button, no instructions or other buttons */}
           <View style={styles.instructionsContainer}>
-            <Text style={styles.instructionsText}>
-              Tap a tile to select, then tap another to swap.
-            </Text>
-            
-            <TouchableOpacity 
-              style={styles.debugButton}
-              onPress={() => this.setState(prev => ({ showDebugInfo: !prev.showDebugInfo }))}
-            >
-              <Text style={styles.debugButtonText}>
-                {this.state.showDebugInfo ? "Hide Hints" : "Show Hints"}
-              </Text>
-            </TouchableOpacity>
+            {!gameStarted ? (
+              <TouchableOpacity 
+                style={styles.startButton}
+                onPress={this.startGame}
+              >
+                <Text style={styles.startButtonText}>
+                  Start Game
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity 
+                style={styles.gameButton}
+                onPress={() => this.initGame()}
+              >
+                <Text style={styles.buttonText}>
+                  New Game
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </View>
@@ -458,8 +528,17 @@ const styles = StyleSheet.create({
     marginBottom: 5,
     alignItems: 'center'
   },
+  solutionBanner: {
+    backgroundColor: 'rgba(25, 118, 210, 0.8)',
+    borderRadius: 4
+  },
   movesText: {
     fontSize: 16,
+    fontWeight: 'bold',
+    color: 'white'
+  },
+  solutionText: {
+    fontSize: 18,
     fontWeight: 'bold',
     color: 'white'
   },
@@ -470,7 +549,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     overflow: 'hidden',
     padding: 2,
-    marginVertical: 10,
+    marginBottom: 15,
+    marginTop: 25,
     position: 'relative'
   },
   piece: {
@@ -478,6 +558,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     position: 'absolute',
     margin: 0
+  },
+  touchArea: {
+    position: 'absolute',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'visible'
   },
   cornerDot: {
     width: 10,
@@ -497,13 +583,9 @@ const styles = StyleSheet.create({
   },
   instructionsContainer: {
     width: '100%',
-    paddingVertical: 10,
-    alignItems: 'center'
-  },
-  instructionsText: {
-    fontSize: 14,
-    color: 'white',
-    opacity: 0.9
+    paddingVertical: 15,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   debugText: {
     fontSize: 10,
@@ -513,12 +595,56 @@ const styles = StyleSheet.create({
     textShadowRadius: 1,
     fontWeight: 'bold'
   },
-  debugButton: {
+  startButton: {
+    backgroundColor: '#FF6B00',
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 6,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2
+  },
+  startButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center'
+  },
+  // Button styles
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginTop: 10,
+    width: '100%',
+    flexWrap: 'wrap'
+  },
+  gameButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    backgroundColor: '#4CAF50',
+    borderRadius: 6,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center'
+  },
+  debugButton: {
     paddingVertical: 8,
     paddingHorizontal: 12,
     backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 4
+    borderRadius: 4,
+    marginHorizontal: 5,
+    marginVertical: 5
   },
   debugButtonText: {
     color: 'white',
