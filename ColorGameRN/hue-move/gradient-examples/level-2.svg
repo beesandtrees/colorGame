@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="280px" height="280px" viewBox="0 0 280 280" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>level-2</title>
+    <g id="progressions" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Artboard" transform="translate(-804, -61)">
+            <g id="level-2" transform="translate(804, 61)">
+                <rect id="Rectangle" fill="#DB007A" x="0" y="0" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-3" fill="#A9005E" x="0" y="58" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-8" fill="#6C015E" x="0" y="116" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-19" fill="#320062" x="0" y="174" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-23" fill="#000933" x="0" y="232" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy" fill="#FF6464" x="58" y="0" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-2" fill="#CE5D7B" x="58" y="58" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-7" fill="#9F699D" x="58" y="116" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-18" fill="#51499F" x="58" y="174" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-22" fill="#012A83" x="58" y="232" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-4" fill="#FFA552" x="116" y="0" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-5" fill="#CCA67E" x="116" y="58" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-6" fill="#9A9A9A" x="116" y="116" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-16" fill="#5482B1" x="116" y="174" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-21" fill="#0062B5" x="116" y="232" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-9" fill="#FFDD77" x="174" y="0" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-13" fill="#E5DF88" x="174" y="58" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-14" fill="#99DC8A" x="174" y="116" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-15" fill="#54B790" x="174" y="174" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-20" fill="#00AE9B" x="174" y="232" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-10" fill="#FFFD02" x="232" y="0" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-11" fill="#DDFF02" x="232" y="58" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-12" fill="#93FF67" x="232" y="116" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-17" fill="#04EF8D" x="232" y="174" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-17" fill="#00C673" x="232" y="232" width="48" height="48" rx="24"></rect>
+            </g>
+        </g>
+    </g>
+</svg>

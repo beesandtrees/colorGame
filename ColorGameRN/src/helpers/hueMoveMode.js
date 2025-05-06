@@ -1,6 +1,9 @@
 // Helper functions for Hue Move game mode
 // Based on the original game in hue-move/script.js
 
+// Import custom level definitions
+import customLevels from './hueMoveCustomlevels';
+
 // Constants that match the original game
 const PUZZLE_COLOR_MODIFIER_MAX = 7;
 
@@ -123,8 +126,57 @@ function generateRgbColor(i, j, gridSize, _modifier, x, contrastMultiplier = 1.0
   return rgb;
 }
 
+// Generate a grid from predefined levels
+export function generateCustomLevelGrid(levelKey) {
+  if (!customLevels[levelKey]) {
+    console.error(`Level ${levelKey} not found in customLevels`);
+    return null;
+  }
+
+  const colorGrid = customLevels[levelKey];
+  const size = colorGrid.length;
+  const grid = [];
+  
+  for (let row = 0; row < size; row++) {
+    grid[row] = [];
+    for (let col = 0; col < size; col++) {
+      const color = colorGrid[row][col];
+      const isCorner =
+        (row === 0 && col === 0) ||
+        (row === 0 && col === size - 1) ||
+        (row === size - 1 && col === 0) ||
+        (row === size - 1 && col === size - 1);
+      grid[row][col] = {
+        color: color,
+        originalRow: row,
+        originalCol: col,
+        isCorner: isCorner
+      };
+    }
+  }
+  return grid;
+}
+
 // Generate the initial solved grid
 export function generateSolvedHueMoveGrid(size, modifier, contrastMultiplier = 1.0, stage = 1) {
+  // For levels 1 and 2, use predefined grids
+  if (size === 5) {
+    if (modifier === 1) {
+      return generateCustomLevelGrid('level1');
+    } else if (modifier === 4) {
+      return generateCustomLevelGrid('level2');
+    } else if (modifier === 2) {
+      return generateCustomLevelGrid('level3');
+    } else if (modifier === 3) {
+      return generateCustomLevelGrid('level4');
+    } else if (modifier === 6) {
+      return generateCustomLevelGrid('level5');
+    } else if (modifier === 5) {
+      return generateCustomLevelGrid('level6');
+    }
+  }
+
+  // For other levels or when custom level is not available, use procedural generation
   const grid = [];
   const baseX = minMax(0, 255);
   for (let row = 0; row < size; row++) {

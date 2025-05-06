@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="280px" height="280px" viewBox="0 0 280 280" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>autumn</title>
+    <g id="progressions" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Artboard" transform="translate(-1171, -61)">
+            <g id="autumn" transform="translate(1171, 61)">
+                <rect id="Rectangle" fill="#FFF8B6" transform="translate(24, 256) rotate(-90) translate(-24, -256)" x="0" y="232" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy" fill="#FFE685" transform="translate(24, 198) rotate(-90) translate(-24, -198)" x="0" y="174" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-4" fill="#FFCF2C" transform="translate(24, 140) rotate(-90) translate(-24, -140)" x="0" y="116" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-9" fill="#FFAC00" transform="translate(24, 82) rotate(-90) translate(-24, -82)" x="0" y="58" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-10" fill="#FF7A00" transform="translate(24, 24) rotate(-90) translate(-24, -24)" x="0" y="6.82121026e-13" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy" fill="#F6F1C0" transform="translate(82, 256) rotate(-90) translate(-82, -256)" x="58" y="232" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-4" fill="#EFE194" transform="translate(82, 198) rotate(-90) translate(-82, -198)" x="58" y="174" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-9" fill="#DFC133" transform="translate(82, 140) rotate(-90) translate(-82, -140)" x="58" y="116" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-10" fill="#DC982E" transform="translate(82, 82) rotate(-90) translate(-82, -82)" x="58" y="58" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-11" fill="#DC6A2E" transform="translate(82, 24) rotate(-90) translate(-82, -24)" x="58" y="2.27373675e-13" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-12" fill="#B44A3B" transform="translate(140, 24) rotate(-90) translate(-140, -24)" x="116" y="2.27373675e-13" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-17" fill="#7F3C56" transform="translate(198, 24) rotate(-90) translate(-198, -24)" x="174" y="2.27373675e-13" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-17" fill="#401F56" transform="translate(256, 24) rotate(-90) translate(-256, -24)" x="232" y="0" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-13" fill="#877430" transform="translate(198, 82) rotate(-90) translate(-198, -82)" x="174" y="58" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-13" fill="#6A4B6F" transform="translate(198, 82) rotate(-90) translate(-198, -82)" x="174" y="58" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-4" fill="#E2EAC3" transform="translate(140, 256) rotate(-90) translate(-140, -256)" x="116" y="232" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-9" fill="#C9D09C" transform="translate(140, 198) rotate(-90) translate(-140, -198)" x="116" y="174" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-14" fill="#CBD5B9" transform="translate(198, 256) rotate(-90) translate(-198, -256)" x="174" y="232" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-10" fill="#ADAB84" transform="translate(140, 140) rotate(-90) translate(-140, -140)" x="116" y="116" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-15" fill="#9ABC93" transform="translate(198, 198) rotate(-90) translate(-198, -198)" x="174" y="174" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-11" fill="#AB715A" transform="translate(140, 82) rotate(-90) translate(-140, -82)" x="116" y="58" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-16" fill="#718886" transform="translate(198, 140) rotate(-90) translate(-198, -140)" x="174" y="116" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-17" fill="#3C4365" transform="translate(256, 82) rotate(-90) translate(-256, -82)" x="232" y="58" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-13" fill="#877430" transform="translate(256, 140) rotate(-90) translate(-256, -140)" x="232" y="116" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-13" fill="#3E6561" transform="translate(256, 140) rotate(-90) translate(-256, -140)" x="232" y="116" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-15" fill="#A6C5A1" transform="translate(256, 256) rotate(-90) translate(-256, -256)" x="232" y="232" width="48" height="48" rx="24"></rect>
+                <rect id="Rectangle-Copy-16" fill="#699876" transform="translate(256, 198) rotate(-90) translate(-256, -198)" x="232" y="174" width="48" height="48" rx="24"></rect>
+            </g>
+        </g>
+    </g>
+</svg>

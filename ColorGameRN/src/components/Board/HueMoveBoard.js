@@ -396,9 +396,9 @@ export default class HueMoveBoard extends Component {
     
     console.log(`Rendering board with selectedPiece: ${selectedPiece}`);
     
-    // Calculate dimensions with a small gap between pieces
+    // Calculate dimensions with a gap between pieces
     const gap = 2; // Gap between pieces in pixels
-    const totalGapsWidth = gap * (gridSize - 1);
+    const totalGapsWidth = gap * gridSize * 1.5;
     const pieceSize = boardSize > 0 ? (boardSize - totalGapsWidth) / gridSize : 0;
     
     // If we don't have a valid board size yet, don't render pieces
@@ -418,8 +418,8 @@ export default class HueMoveBoard extends Component {
         const piece = grid[row][col];
         
         // Calculate absolute position of this piece
-        const xPos = col * (pieceSize + gap) + 2; // +2 for grid padding
-        const yPos = row * (pieceSize + gap) + 2; // +2 for grid padding
+        const xPos = col * (pieceSize + gap) + 4; // +4 for grid padding
+        const yPos = row * (pieceSize + gap) + 4; // +4 for grid padding
         
         // Check corner positions - use both flag and exact coordinates
         const isCorner = 
@@ -448,7 +448,12 @@ export default class HueMoveBoard extends Component {
                 left: xPos,
                 top: yPos,
                 borderWidth: isSelected ? 3 : 0,
-                borderColor: isSelected ? '#FFFFFF' : 'transparent'
+                borderColor: isSelected ? '#FFFFFF' : 'transparent',
+                shadowColor: isSelected ? '#000' : 'transparent',
+                shadowOffset: isSelected ? { width: 0, height: 2 } : { width: 0, height: 0 },
+                shadowOpacity: isSelected ? 0.7 : 0,
+                shadowRadius: isSelected ? 4 : 0,
+                elevation: isSelected ? 8 : 0
               }
             ]}
             onPress={() => this.handlePiecePress(index)}
@@ -459,8 +464,8 @@ export default class HueMoveBoard extends Component {
               <View style={[styles.cornerDot, { 
                 // Position dot in the center of the piece
                 position: 'absolute',
-                left: pieceSize / 2 - 5, // Half piece width minus half dot width
-                top: pieceSize / 2 - 5,  // Half piece height minus half dot height
+                left: pieceSize / 2 - 6, // Half piece width minus half dot width
+                top: pieceSize / 2 - 6,  // Half piece height minus half dot height
               }]} />
             )}
             
@@ -536,11 +541,13 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 10,
+    marginBottom: 20,
     backgroundColor: 'transparent'
   },
   gameBoard: {
-    width: '90%',
+    width: '100%',
+    alignSelf: 'center',
+    paddingHorizontal: 20,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'transparent'
@@ -571,19 +578,25 @@ const styles = StyleSheet.create({
   grid: {
     width: '100%',
     aspectRatio: 1,
-    backgroundColor: '#444444',
-    borderRadius: 8,
+    backgroundColor: 'white',
+    borderRadius: 10,
     overflow: 'hidden',
-    padding: 2,
+    padding: 4,
     marginBottom: 15,
     marginTop: 25,
-    position: 'relative'
+    position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3
   },
   piece: {
     justifyContent: 'center',
     alignItems: 'center',
     position: 'absolute',
-    margin: 0
+    margin: 0,
+    borderRadius: 999, // Make pieces circular
   },
   touchArea: {
     position: 'absolute',
@@ -592,18 +605,12 @@ const styles = StyleSheet.create({
     overflow: 'visible'
   },
   cornerDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#000000',
-    borderWidth: 2,
-    borderColor: 'white',
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#FFFFFF',
     position: 'absolute',
     zIndex: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.8,
-    shadowRadius: 1,
     elevation: 5,
     alignSelf: 'center'
   },
@@ -622,7 +629,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold'
   },
   startButton: {
-    backgroundColor: '#FF6B00',
+    backgroundColor: '#F91593',
     paddingVertical: 12,
     paddingHorizontal: 30,
     borderRadius: 6,
