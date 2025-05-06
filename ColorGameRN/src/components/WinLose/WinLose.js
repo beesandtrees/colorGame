@@ -3,6 +3,14 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { winText } from '../../helpers/constants.js';
 import { rand } from '../../helpers/helpers.js';
 
+// Import Hue Move helpers using try-catch to handle potential module loading issues
+let hueMoveHelpers = {};
+try {
+  hueMoveHelpers = require('../../helpers/hueMoveMode.js');
+} catch (error) {
+  console.error('Error importing hueMoveMode.js:', error);
+}
+
 const WinLose = props => {
   let winner = props.won;
   let winLen = winText.length;
@@ -12,14 +20,64 @@ const WinLose = props => {
     const score = props.game && props.game.score ? props.game.score : 0;
     const level = props.game && props.game.level ? props.game.level : 1;
     const nextLevel = level + 1;
+    const gameMode = props.game && props.game.gameMode ? props.game.gameMode : 'classic';
     
     // Calculate the next level multiplier for display
     const nextLevelMultiplier = Math.pow(1.2, level).toFixed(1);
+    
+    // Check if this is the last level in a round (only applies to Hue Move mode)
+    const isHueMoveMode = gameMode === 'huemove';
+    let isLastLevelInRound = false;
+    
+    // Add a try-catch to handle potential errors with the helper functions
+    try {
+      if (isHueMoveMode && typeof hueMoveHelpers.isLastLevelInRound === 'function') {
+        isLastLevelInRound = hueMoveHelpers.isLastLevelInRound(level);
+      }
+    } catch (error) {
+      console.error('Error checking if level is last in round:', error);
+    }
+    
+    // If it's Hue Move mode, get grid size and current round info
+    let roundInfo = '';
+    if (isHueMoveMode) {
+      try {
+        // Ensure all required functions exist
+        if (typeof hueMoveHelpers.createHueLevel === 'function' && 
+            typeof hueMoveHelpers.calculateTotalLevelsInRound === 'function') {
+          
+          const levelConfig = hueMoveHelpers.createHueLevel(level);
+          const gridSize = levelConfig.gridSize;
+          const totalLevelsInRound = hueMoveHelpers.calculateTotalLevelsInRound(gridSize);
+          
+          // Find the first level for this grid size
+          let firstLevelForGridSize;
+          if (gridSize === 5) firstLevelForGridSize = 1;
+          else if (gridSize === 6) firstLevelForGridSize = 4;
+          else if (gridSize === 7) firstLevelForGridSize = 8;
+          else if (gridSize === 8) firstLevelForGridSize = 13;
+          else firstLevelForGridSize = 19;
+          
+          // Calculate which level within the round this is
+          const levelInRound = level - firstLevelForGridSize + 1;
+          
+          if (isLastLevelInRound) {
+            roundInfo = `Round complete! (${levelInRound}/${totalLevelsInRound})`;
+          } else {
+            roundInfo = `Round progress: ${levelInRound}/${totalLevelsInRound}`;
+          }
+        }
+      } catch (error) {
+        console.error('Error calculating round info:', error);
+        roundInfo = `Level ${level}`;
+      }
+    }
     
     resultsText = (
       <View>
         <Text style={styles.titleText}>{winText[rand(winLen)]}</Text>
         <Text style={styles.text}>Level {level} Complete!</Text>
+        {isHueMoveMode && <Text style={styles.roundText}>{roundInfo}</Text>}
         <Text style={styles.scoreText}>Score: {score}</Text>
         <Text style={styles.text}>Next level: {nextLevel}</Text>
         <Text style={styles.bonusText}>Score multiplier: {nextLevelMultiplier}x</Text>
@@ -54,7 +112,9 @@ const WinLose = props => {
           }} 
           style={styles.btn}
         >
-          <Text style={styles.btnText}>Next Level</Text>
+          <Text style={styles.btnText}>
+            {isHueMoveMode && isLastLevelInRound ? 'Next Round' : 'Next Level'}
+          </Text>
         </TouchableOpacity>
       </View>
     );
@@ -126,6 +186,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 10,
     color: '#FF6B00',
+  },
+  roundText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 10,
+    color: '#F91593',
   },
   bonusText: {
     fontSize: 16,
