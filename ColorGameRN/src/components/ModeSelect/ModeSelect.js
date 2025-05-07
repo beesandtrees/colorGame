@@ -39,7 +39,17 @@ const ModeSelect = ({ visible, onSelect, onClose }) => {
           >
             <Text style={styles.modeTitle}>Hue Move Mode</Text>
             <Text style={styles.modeDescription}>
-              Swap color tiles to arrange them in their original gradient pattern
+              Tap tiles to swap and arrange them in their original gradient pattern
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.modeButton} 
+            onPress={() => onSelect('huemovednd')}
+          >
+            <Text style={styles.modeTitle}>Hue Move DnD Mode</Text>
+            <Text style={styles.modeDescription}>
+              Drag and drop tiles to arrange them in their original gradient pattern
             </Text>
           </TouchableOpacity>
           

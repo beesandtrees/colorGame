@@ -16,6 +16,7 @@ import Logo from './src/components/Logo/Logo.js';
 import Board from './src/components/Board/Board.js';
 import Match3Board from './src/components/Board/Match3Board.js';
 import HueMoveBoard from './src/components/Board/HueMoveBoard.js';
+import HueMoveDnDBoard from './src/components/Board/HueMoveDnDBoard.js';
 import WinLose from './src/components/WinLose/WinLose.js';
 import ModeSelect from './src/components/ModeSelect/ModeSelect.js';
 
@@ -41,6 +42,14 @@ class Info extends Component {
         "Hue Move Mode:\n\n" +
         "• TAP a tile to select it\n" +
         "• TAP another tile to swap them\n" +
+        "• ARRANGE all tiles to recreate the original color gradient\n" +
+        "• CORNER tiles are locked and cannot be moved\n\n" +
+        "Look at the corner pieces - they show what the color pattern should be. The goal is to arrange all colors into a smooth gradient that flows across the grid.\n\n" +
+        "Strategy tip: Work on one row or column at a time, starting from the corners!";
+    } else if (gameMode === 'huemovednd') {
+      instructions = 
+        "Hue Move Drag & Drop Mode:\n\n" +
+        "• DRAG a tile and drop it on another tile to swap them\n" +
         "• ARRANGE all tiles to recreate the original color gradient\n" +
         "• CORNER tiles are locked and cannot be moved\n\n" +
         "Look at the corner pieces - they show what the color pattern should be. The goal is to arrange all colors into a smooth gradient that flows across the grid.\n\n" +
@@ -299,11 +308,13 @@ class AppContent extends Component {
           </Text>
         </View>
       );
-    } else if (game.gameMode === 'huemove') {
+    } else if (game.gameMode === 'huemove' || game.gameMode === 'huemovednd') {
       return (
         <View style={styles.header}>
           <Logo />
-          <Text style={styles.title}>Hue Move</Text>
+          <Text style={styles.title}>
+            {game.gameMode === 'huemovednd' ? 'Hue Move DnD' : 'Hue Move'}
+          </Text>
           <View style={styles.headerButtons}>
             <TouchableOpacity 
               style={styles.headerButton}
@@ -394,14 +405,30 @@ class AppContent extends Component {
           restart={(startover) => this.restart(startover)}
         />
       );
+    } else if (game.gameMode === 'huemovednd') {
+      return (
+        <HueMoveDnDBoard
+          colors={this.state.colors}
+          grid={game.grid}
+          game={game}
+          updateClicks={this.props.updateClicks}
+          updateScore={this.props.updateScore}
+          updateLevel={this.props.updateLevel}
+          createGrid={this.props.createGrid}
+          loadBlocks={this.props.loadBlocks}
+          didWin={this.props.didWin}
+          level={level}
+          restart={(startover) => this.restart(startover)}
+        />
+      );
     }
   }
   
   renderFooter() {
     const { game } = this.props;
     
-    // Don't show the footer New Game button for Hue Move mode
-    if (game.gameMode === 'huemove') {
+    // Don't show the footer New Game button for Hue Move modes
+    if (game.gameMode === 'huemove' || game.gameMode === 'huemovednd') {
       return null;
     }
     
@@ -425,7 +452,7 @@ class AppContent extends Component {
       <SafeAreaView 
         style={[
           styles.container, 
-          { backgroundColor: game.gameMode === 'huemove' ? '#333333' : baseColor }
+          { backgroundColor: game.gameMode === 'huemove' || game.gameMode === 'huemovednd' ? '#333333' : baseColor }
         ]}
       >
         <StatusBar style="light" />
