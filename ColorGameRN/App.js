@@ -207,14 +207,17 @@ class AppContent extends Component {
     // Close modal
     this.setState({ showModeSelect: false });
     
-    // Reset game with new mode
+    // Reset game state
     this.props.updateLevel(1);
     this.props.didWin(null);
+    this.props.updateClicks(0);
+    this.props.updateMatchesMade(0);
+    this.props.createGrid([]); // Clear the grid first
     
-    // We'll restart the game with the new mode
+    // We'll restart the game with the new mode after state updates
     setTimeout(() => {
       this.restart(true);
-    }, 100);
+    }, 150);
   }
   
   renderHeader() {
@@ -249,7 +252,7 @@ class AppContent extends Component {
       return (
         <View style={styles.header}>
           <Logo />
-          <Text style={styles.title}>Color Match 3</Text>
+          <Text style={styles.title}>Match 3</Text>
           <View style={styles.headerButtons}>
             <TouchableOpacity 
               style={styles.headerButton}

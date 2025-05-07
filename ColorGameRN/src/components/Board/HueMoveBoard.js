@@ -34,9 +34,18 @@ export default class HueMoveBoard extends Component {
   }
   
   componentDidUpdate(prevProps) {
-    // If level changes, reinitialize the game
-    if (prevProps.level?.level !== this.props.level?.level) {
-      console.log(`Level changed from ${prevProps.level?.level} to ${this.props.level?.level}, reinitializing game`);
+    // Detect changes that require game reinitialization
+    const levelChanged = prevProps.level?.level !== this.props.level?.level;
+    const gridAppeared = !prevProps.game?.grid?.length && this.props.game?.grid?.length;
+    const gameModeChanged = prevProps.game?.gameMode !== this.props.game?.gameMode;
+    
+    // Log so we can debug what triggered the update
+    if (levelChanged || gridAppeared || gameModeChanged) {
+      console.log(`HueMoveBoard needs reinitialization:
+        - Level changed: ${levelChanged} (${prevProps.level?.level} -> ${this.props.level?.level})
+        - Grid appeared: ${gridAppeared}
+        - Game mode changed: ${gameModeChanged}
+      `);
       this.initGame();
     }
   }
@@ -111,7 +120,17 @@ export default class HueMoveBoard extends Component {
   
   handleBoardLayout = (event) => {
     const { width } = event.nativeEvent.layout;
-    this.setState({ boardSize: width });
+    console.log(`Board layout measured, width: ${width}`);
+    
+    // Force a re-render when board size changes by updating state
+    this.setState({ boardSize: width }, () => {
+      // Re-render the board with the current grid after size update
+      const { game } = this.props || {};
+      if (game && game.grid && Array.isArray(game.grid) && game.grid.length > 0) {
+        console.log('Re-rendering board after size measurement');
+        this.renderBoard(game.grid);
+      }
+    });
   }
   
   // Start the game - switch from solution to shuffled board
@@ -387,6 +406,7 @@ export default class HueMoveBoard extends Component {
   
   renderBoard(grid) {
     if (!grid || !Array.isArray(grid) || grid.length === 0) {
+      console.log('HueMoveBoard: Cannot render board - invalid grid');
       return;
     }
     
@@ -394,32 +414,42 @@ export default class HueMoveBoard extends Component {
     const pieces = [];
     const { selectedPiece, boardSize } = this.state;
     
-    console.log(`Rendering board with selectedPiece: ${selectedPiece}`);
+    console.log(`Rendering HueMove board with grid size ${gridSize}, boardSize: ${boardSize}`);
     
-    // Calculate dimensions with a gap between pieces
-    const gap = 2; // Gap between pieces in pixels
-    const totalGapsWidth = gap * gridSize * 1.5;
-    const pieceSize = boardSize > 0 ? (boardSize - totalGapsWidth) / gridSize : 0;
+    // Calculate dimensions to fit the board
+    const gap = 4; // Gap between pieces in pixels
+    const padding = 8; // Grid padding in pixels
+    const usableWidth = boardSize - (padding * 2); // Account for padding on both sides
+    const totalGapsWidth = gap * (gridSize - 1); // Gaps between pieces
+    const pieceSize = usableWidth > 0 ? Math.floor((usableWidth - totalGapsWidth) / gridSize) : 0;
     
     // If we don't have a valid board size yet, don't render pieces
     if (pieceSize <= 0) {
+      console.log('HueMoveBoard: Skipping render - pieceSize not positive');
       return;
     }
+    
+    // Add log for debugging
+    console.log(`HueMoveBoard: Rendering with boardSize: ${boardSize}, pieceSize: ${pieceSize}, gap: ${gap}`);
         
     // Explicitly iterate through all grid positions
     for (let row = 0; row < gridSize; row++) {
       for (let col = 0; col < gridSize; col++) {
         // Skip if grid position doesn't exist
         if (!grid[row] || !grid[row][col]) {
+          console.warn(`HueMoveBoard: Missing grid position at [${row},${col}]`);
           continue;
         }
         
         const index = row * gridSize + col;
         const piece = grid[row][col];
         
-        // Calculate absolute position of this piece
-        const xPos = col * (pieceSize + gap) + 4; // +4 for grid padding
-        const yPos = row * (pieceSize + gap) + 4; // +4 for grid padding
+        // Calculate absolute position of this piece with padding offset
+        const xPos = padding + (col * (pieceSize + gap)); 
+        const yPos = padding + (row * (pieceSize + gap));
+        
+        // Ensure we have valid colors
+        const pieceColor = piece.color || '#cccccc';
         
         // Check corner positions - use both flag and exact coordinates
         const isCorner = 
@@ -436,13 +466,18 @@ export default class HueMoveBoard extends Component {
           console.log(`Rendering piece at index ${index} as SELECTED`);
         }
         
+        // Log for debugging
+        if (row === 0 || row === gridSize-1 || col === 0 || col === gridSize-1) {
+          console.log(`HueMoveBoard: Piece at [${row},${col}], pos: ${xPos},${yPos}, color: ${pieceColor}`);
+        }
+        
         pieces.push(
           <TouchableOpacity
             key={`piece-${index}`}
             style={[
               styles.piece,
               {
-                backgroundColor: piece.color || '#cccccc',
+                backgroundColor: pieceColor,
                 width: pieceSize,
                 height: pieceSize,
                 left: xPos,
@@ -581,7 +616,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderRadius: 10,
     overflow: 'hidden',
-    padding: 4,
+    padding: 8,
     marginBottom: 15,
     marginTop: 25,
     position: 'relative',
@@ -597,6 +632,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     margin: 0,
     borderRadius: 999, // Make pieces circular
+    zIndex: 1, // Ensure pieces are on top
   },
   touchArea: {
     position: 'absolute',
