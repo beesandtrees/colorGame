@@ -7,8 +7,8 @@
 
 const PUZZLE_HOVER_TINT = "#FFFFFF";
 
-var PUZZLE_WIDTH = 6;
-var PUZZLE_HEIGHT = 6;
+var PUZZLE_WIDTH = 8;
+var PUZZLE_HEIGHT = 8;
 
 var TopLeft,
   TopRight,
@@ -165,14 +165,17 @@ function draw() {
 
   var pieceWidth = canvas.width / PUZZLE_WIDTH;
   var pieceHeight = canvas.height / PUZZLE_HEIGHT;
+  var rgbArray = [];
 
   for (i = 0; i < PUZZLE_HEIGHT; i++) {
     for (j = 0; j < PUZZLE_WIDTH; j++) {
       x++;
       ctx.fillStyle = rgb(i, j, x);
       ctx.fillRect(j * pieceWidth, i * pieceHeight, pieceWidth, pieceHeight);
+      rgbArray.push(ctx.fillStyle);
     }
   }
+  console.log(rgbArray);
 
   makeDots(ctx, pieceWidth, pieceHeight, canvas.width, canvas.height);
 

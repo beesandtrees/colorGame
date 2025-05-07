@@ -78,7 +78,9 @@ export default class HueMoveBoard extends Component {
       this.solvedGrid = hueMoveHelpers.generateSolvedHueMoveGrid(
         gridSize, 
         level.colorModifier, 
-        level.contrastMultiplier || 1.0
+        level.contrastMultiplier || 1.0,
+        level.stage || 1,
+        level.generatorType || 'classic'
       );
       
       // Then create the shuffled grid for gameplay

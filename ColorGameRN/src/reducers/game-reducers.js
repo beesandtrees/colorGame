@@ -6,7 +6,7 @@ const initialState = {
   clicks: 0,
   grid: [],
   blocks: [],
-  gameMode: 'classic', // 'classic', 'match3', or 'huemove'
+  gameMode: 'huemove', // 'classic', 'match3', or 'huemove'
   score: 0,
   matchesMade: 0
 };

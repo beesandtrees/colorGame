@@ -156,7 +156,10 @@ class AppContent extends Component {
         // Create solved grid
         const solvedGrid = hueMoveHelpers.generateSolvedHueMoveGrid(
           gridSize,
-          colorModifier
+          colorModifier,
+          level.contrastMultiplier || 1.0,
+          level.stage || 1,
+          level.generatorType || 'classic'
         );
         
         if (!solvedGrid) {

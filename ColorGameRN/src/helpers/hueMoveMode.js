@@ -1,8 +1,21 @@
 // Helper functions for Hue Move game mode
 // Based on the original game in hue-move/script.js
 
-// Import custom level definitions
-import { customLevels, generateHSLColor, generateRgbColor } from './hueMoveColorGeneration';
+// Import custom level definitions and color generators
+import { 
+  customLevels, 
+  generateRgbColor, 
+  generateRGBClassic,
+  generateRGBSmooth,
+  generateRGBHighContrast,
+  generateRGBSubtle,
+  generateRGBRadial,
+  generateRGBSpiral,
+  generateRGBWave,
+  generateRGBDiagonal,
+  rgbGenerators,
+  getRandomGenerator
+} from './hueMoveColorGeneration';
 
 // Constants that match the original game
 const PUZZLE_COLOR_MODIFIER_MAX = 7;
@@ -14,15 +27,15 @@ export function minMax(min, max) {
 
 // Create a level configuration
 export function createHueLevel(level) {
-  let baseSize, gridSize, moveLimit, colorModifier, contrastMultiplier, stage;
+  let baseSize, gridSize, moveLimit, colorModifier, contrastMultiplier, stage, generatorType;
 
-  if (level <= 3) {
+  if (level <= 7) {
     gridSize = 5;
-  } else if (level <= 7) {
+  } else if (level <= 13) {
     gridSize = 6;
-  } else if (level <= 12) {
+  } else if (level <= 19) {
     gridSize = 7;
-  } else if (level <= 18) {
+  } else if (level <= 31) {
     gridSize = 8;
   } else {
     gridSize = 9;
@@ -39,18 +52,27 @@ export function createHueLevel(level) {
 
   moveLimit = 25 + (level * 5) + ((gridSize - 5) * 5);
 
+  // Assign specific color generation settings based on level
   if (level === 1) {
     colorModifier = 1;
     contrastMultiplier = 1.5;
+    generatorType = 'classic';
   } else if (level === 2) {
     colorModifier = 4;
     contrastMultiplier = 1.4;
+    generatorType = 'smooth';
   } else if (level === 3) {
     colorModifier = 2;
     contrastMultiplier = 1.3;
+    generatorType = 'highContrast';
   } else {
     colorModifier = (level % PUZZLE_COLOR_MODIFIER_MAX) + 1;
     contrastMultiplier = Math.max(1.0, 1.3 - (level * 0.05));
+    
+    // Cycle through different generators as levels progress
+    const generatorTypes = ['classic', 'smooth', 'highContrast', 'subtle', 'radial', 'spiral', 'wave', 'diagonal'];
+    const generatorIndex = Math.floor((level - 1) % generatorTypes.length);
+    generatorType = generatorTypes[generatorIndex];
   }
 
   return {
@@ -59,11 +81,14 @@ export function createHueLevel(level) {
     colorModifier: colorModifier,
     moveLimit: moveLimit,
     contrastMultiplier: contrastMultiplier,
-    stage: stage
+    stage: stage,
+    generatorType: generatorType
   };
 }
 // Generate a grid from predefined levels
-export function generateCustomLevelGrid(levelKey) {
+export function generateCustomLevelGrid(level, s) {
+  const levelKey = `${level}${s}`;
+
   if (!customLevels[levelKey]) {
     console.error(`Level ${levelKey} not found in customLevels`);
     return null;
@@ -94,34 +119,32 @@ export function generateCustomLevelGrid(levelKey) {
 }
 
 // Generate the initial solved grid
-export function generateSolvedHueMoveGrid(size, modifier, contrastMultiplier = 1.0, stage = 1) {
+export function generateSolvedHueMoveGrid(size, modifier, contrastMultiplier = 1.0, stage = 1, generatorType = 'classic') {
   // For levels with size 5, use predefined custom grids
   // if (size === 5) {
-  //   if (modifier === 1) {
-  //     return generateCustomLevelGrid('level1');
-  //   } else if (modifier === 4) {
-  //     return generateCustomLevelGrid('level2');
-  //   } else if (modifier === 2) {
-  //     return generateCustomLevelGrid('level3');
-  //   } else if (modifier === 3) {
-  //     return generateCustomLevelGrid('level4');
-  //   } else if (modifier === 6) {
-  //     return generateCustomLevelGrid('level5');
-  //   } else if (modifier === 5) {
-  //     return generateCustomLevelGrid('level6');
-  //   }
+    if (stage === 1) {
+      return generateCustomLevelGrid('level1', size);
+    } else if (stage === 2) {
+      return generateCustomLevelGrid('level2', size);
+    } else if (stage === 3) {
+      return generateCustomLevelGrid('level3', size);
+    } else if (stage === 4 && (size === 5 || size === 6)) {
+      return generateCustomLevelGrid('level4', size);
+    } else if (stage === 5 && size === 5) {
+      return generateCustomLevelGrid('level5', size);
+    } else if (stage === 6 && size === 5) {
+      return generateCustomLevelGrid('level6', size);
+    }
   // }
 
   // For other levels or when custom level is not available, use procedural generation
   const grid = [];
   const baseX = minMax(0, 255);
   
-  // Randomly choose between HSL and RGB color generation
-  // Use a deterministic approach based on level parameters to ensure
-  // the same level always gets the same color generation method
-  const useHSL = ((size * 10 + modifier * 3 + stage) % 2) === 0;
+  // Get the appropriate color generator
+  const useGenerator = rgbGenerators[generatorType] || rgbGenerators.classic;
   
-  console.log(`Generating grid: size=${size}, modifier=${modifier}, baseX=${baseX}, colorMode=${useHSL ? 'HSL' : 'RGB'}`);
+  console.log(`Generating grid: size=${size}, modifier=${modifier}, baseX=${baseX}, generatorType=${generatorType}`);
   
   try {
     for (let row = 0; row < size; row++) {
@@ -134,16 +157,12 @@ export function generateSolvedHueMoveGrid(size, modifier, contrastMultiplier = 1
         
         let color;
         try {
-          // Choose between HSL and RGB color generation
-          if (useHSL) {
-            color = generateHSLColor(row, col, size, safeModifier, baseX, contrastMultiplier, stage);
-          } else {
-            color = generateRgbColor(row, col, size, safeModifier, baseX, contrastMultiplier, stage);
-          }
+          // Use the selected color generator function
+          color = useGenerator(row, col, size, safeModifier, baseX, contrastMultiplier, stage);
         } catch (error) {
           console.error(`Error generating color: ${error.message}`);
           // Fallback to a default color if there's an error
-          color = `hsl(${(row * 60) % 360}, 80%, 50%)`;
+          color = `rgb(${Math.round((row/size) * 255)}, ${Math.round((col/size) * 255)}, 128)`;
         }
         
         const isCorner =
@@ -301,20 +320,18 @@ export function calculateTotalLevelsInRound(gridSize) {
 
 // Helper function to generate a sample color grid with specified parameters
 // Useful for testing different color generation methods
-export function generateColorSample(size = 5, useHSL = true, colorModifier = 1, baseX = 128) {
+export function generateColorSample(size = 5, generatorType = 'classic', colorModifier = 1, baseX = 128) {
   const grid = [];
   const stage = 1;
   const contrastMultiplier = 1.2;
   
+  // Get the appropriate color generator
+  const useGenerator = rgbGenerators[generatorType] || rgbGenerators.classic;
+  
   for (let row = 0; row < size; row++) {
     const rowColors = [];
     for (let col = 0; col < size; col++) {
-      let color;
-      if (useHSL) {
-        color = generateHSLColor(row, col, size, colorModifier, baseX, contrastMultiplier, stage);
-      } else {
-        color = generateRgbColor(row, col, size, colorModifier, baseX, contrastMultiplier, stage);
-      }
+      let color = useGenerator(row, col, size, colorModifier, baseX, contrastMultiplier, stage);
       rowColors.push(color);
     }
     grid.push(rowColors);
