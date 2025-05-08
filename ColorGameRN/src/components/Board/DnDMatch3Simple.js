@@ -62,8 +62,21 @@ export default class DnDMatch3Simple extends Component {
     this.pans = {};
     this.panResponders = {};
     
-    this.state.pieces.forEach(piece => {
-      this.pans[piece.id] = new Animated.ValueXY();
+    // Initialize the pan responders
+    this.createPanResponders();
+  }
+  
+  // Helper method to create/recreate pan responders 
+  createPanResponders = () => {
+    const { pieces } = this.state;
+    
+    pieces.forEach(piece => {
+      // Initialize pan value if it doesn't exist
+      if (!this.pans[piece.id]) {
+        this.pans[piece.id] = new Animated.ValueXY();
+      }
+      
+      // Create or recreate the pan responder
       this.panResponders[piece.id] = PanResponder.create({
         onStartShouldSetPanResponder: () => true,
         onPanResponderGrant: () => {
@@ -75,17 +88,33 @@ export default class DnDMatch3Simple extends Component {
           });
           this.pans[piece.id].setValue({ x: 0, y: 0 });
         },
-        onPanResponderMove: Animated.event([
-          null, 
-          { dx: this.pans[piece.id].x, dy: this.pans[piece.id].y }
-        ], { 
-          useNativeDriver: false,
-          listener: (_, gestureState) => {
-            // Find the closest piece during drag
+        onPanResponderMove: (_, gestureState) => {
+            // Get raw drag values
             const { dx, dy } = gestureState;
             const { id, x, y } = piece;
-            const dragX = x + dx;
-            const dragY = y + dy;
+            
+            // Calculate the maximum distance a piece can be dragged (1 cell width)
+            const maxDragDistance = this.CELL_SIZE + this.GAP;
+            
+            // Limit the drag distance without changing direction
+            let limitedDx = dx;
+            let limitedDy = dy;
+            
+            // Apply distance limit while preserving direction
+            if (Math.abs(dx) > maxDragDistance) {
+              limitedDx = Math.sign(dx) * maxDragDistance;
+            }
+            
+            if (Math.abs(dy) > maxDragDistance) {
+              limitedDy = Math.sign(dy) * maxDragDistance;
+            }
+            
+            // Update animation values
+            this.pans[piece.id].setValue({ x: limitedDx, y: limitedDy });
+            
+            // Use limited values for hit detection
+            const dragX = x + limitedDx;
+            const dragY = y + limitedDy;
             const closestPiece = this.findClosestPiece(id, dragX, dragY);
             
             // Update the exchange piece if it changed
@@ -94,8 +123,7 @@ export default class DnDMatch3Simple extends Component {
             } else {
               this.setState({ exchangePieceId: null });
             }
-          }
-        }),
+        },
         onPanResponderRelease: () => {
           console.log(`Released piece ${piece.id}`);
           this.pans[piece.id].flattenOffset();
@@ -135,7 +163,7 @@ export default class DnDMatch3Simple extends Component {
         }
       });
     });
-  }
+  };
   
   findClosestPiece(pieceId, x, y) {
     const currentPiece = this.state.pieces.find(p => p.id === pieceId);
@@ -212,9 +240,18 @@ export default class DnDMatch3Simple extends Component {
     piece2.row = tempRow;
     piece2.col = tempCol;
     
-    // Reset the animated values
-    this.pans[id1].setValue({ x: 0, y: 0 });
-    this.pans[id2].setValue({ x: 0, y: 0 });
+    // Reset the animated values gradually with animation
+    Animated.timing(this.pans[id1], {
+      toValue: { x: 0, y: 0 },
+      duration: 50,
+      useNativeDriver: false
+    }).start();
+    
+    Animated.timing(this.pans[id2], {
+      toValue: { x: 0, y: 0 },
+      duration: 50,
+      useNativeDriver: false
+    }).start();
     
     // Update state
     this.setState({ pieces });
@@ -223,6 +260,9 @@ export default class DnDMatch3Simple extends Component {
     if (this.props.updateClicks) {
       this.props.updateClicks(this.state.moves);
     }
+    
+    // Update pan responders with new piece positions
+    this.createPanResponders();
     
     // Check for matches after the swap
     this.checkForMatches();
@@ -379,10 +419,13 @@ export default class DnDMatch3Simple extends Component {
                   backgroundColor: piece.color,
                   left: Animated.add(piece.x, this.pans[piece.id].x),
                   top: Animated.add(piece.y, this.pans[piece.id].y),
-                  zIndex: draggedPieceId === piece.id ? 10 : (exchangePieceId === piece.id ? 5 : 1),
+                  zIndex: draggedPieceId === piece.id ? 1000 : 
+                           exchangePieceId === piece.id ? 500 : 
+                           piece.matched ? 100 : 
+                           1,
                   borderWidth: draggedPieceId === piece.id ? 2 : 0,
                   borderColor: draggedPieceId === piece.id ? 'white' : 'transparent',
-                  opacity: exchangePieceId === piece.id ? 0.5 : 1,
+                  opacity: exchangePieceId === piece.id ? 0.8 : 1,
                   // Add a visual indicator for matched pieces
                   transform: piece.matched ? [{ scale: 0.9 }] : [],
                   shadowColor: piece.matched ? '#FFF' : 'transparent',
