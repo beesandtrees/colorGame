@@ -544,16 +544,87 @@ export default class DnDMatch3Simple extends Component {
       
       console.log(`Added ${matchedPieceIds.size * 10} points to score.`);
       
-      // After a short delay, remove the matched pieces and apply gravity
-      setTimeout(() => {
-        this.removeMatchedPieces(matchedPieceIds);
-      }, 500);
+      // Instead of immediately removing pieces, animate them first
+      this.animateMatchedPiecesDisappearing(matchedPieceIds);
     } else {
       console.log("No matches found.");
     }
     
     } catch (error) {
       console.error("Error in checkForMatches:", error);
+    }
+  }
+  
+  // Animate matched pieces disappearing with a shrinking effect
+  animateMatchedPiecesDisappearing(matchedPieceIds) {
+    try {
+      // Create a reference to the class instance for use in animations
+      const self = this;
+      
+      // For each matched piece, we'll set up an animated value for the scale
+      matchedPieceIds.forEach(pieceId => {
+        const piece = this.state.pieces.find(p => p.id === pieceId);
+        if (!piece) return;
+        
+        // If this piece doesn't have a scale animation value yet, create one
+        if (!piece.scaleAnim) {
+          // Store the animated value directly on the piece object
+          piece.scaleAnim = new Animated.Value(1);
+        }
+        
+        // Reset to starting scale (full size)
+        piece.scaleAnim.setValue(1);
+      });
+      
+      // Update the state to include the scale animation values
+      this.setState({
+        pieces: [...this.state.pieces]
+      }, () => {
+        // Create a sequence of animations for each piece:
+        // 1. Pulse up to 1.2x size
+        // 2. Pause briefly
+        // 3. Shrink to nothing
+        
+        const animations = [];
+        
+        matchedPieceIds.forEach(pieceId => {
+          const piece = this.state.pieces.find(p => p.id === pieceId);
+          if (!piece || !piece.scaleAnim) return;
+          
+          // Create a sequence of animations for a more impactful effect
+          const anim = Animated.sequence([
+            // First pulse up to draw attention
+            Animated.timing(piece.scaleAnim, {
+              toValue: 1.2,  // Grow a bit larger than normal
+              duration: 200, // Quick pulse
+              useNativeDriver: false
+            }),
+            
+            // Brief pause at the larger size
+            Animated.delay(150),
+            
+            // Then shrink away to nothing
+            Animated.timing(piece.scaleAnim, {
+              toValue: 0,
+              duration: 400, // Slightly faster disappear than grow
+              useNativeDriver: false
+            })
+          ]);
+          
+          animations.push(anim);
+        });
+        
+        // Run all animations in parallel (each piece has its own sequence)
+        Animated.parallel(animations).start(() => {
+          console.log("Disappearing animation complete, now removing pieces...");
+          // After all animations complete, remove the pieces
+          self.removeMatchedPieces(matchedPieceIds);
+        });
+      });
+    } catch (error) {
+      console.error("Error in animateMatchedPiecesDisappearing:", error);
+      // Fallback: just remove the pieces without animation
+      this.removeMatchedPieces(matchedPieceIds);
     }
   }
   
@@ -782,17 +853,16 @@ export default class DnDMatch3Simple extends Component {
                         top: Animated.add(piece.y, this.pans[piece.id].y),
                         zIndex: draggedPieceId === piece.id ? 1000 : 
                                  exchangePieceId === piece.id ? 500 : 
-                                 piece.matched ? 100 : 
+                                 piece.matched || piece.scaleAnim ? 100 : 
                                  1,
+                        opacity: exchangePieceId === piece.id ? 0.8 : 1,
+                        // Use scale animation for matched pieces
+                        transform: piece.scaleAnim 
+                          ? [{ scale: piece.scaleAnim }] 
+                          : (piece.matched ? [{ scale: 0.9 }] : []),
+                        // Simple border only for dragged pieces
                         borderWidth: draggedPieceId === piece.id ? 2 : 0,
                         borderColor: draggedPieceId === piece.id ? 'white' : 'transparent',
-                        opacity: exchangePieceId === piece.id ? 0.8 : 1,
-                        // Add a visual indicator for matched pieces
-                        transform: piece.matched ? [{ scale: 0.9 }] : [],
-                        shadowColor: piece.matched ? '#FFF' : 'transparent',
-                        shadowOpacity: piece.matched ? 0.8 : 0,
-                        shadowRadius: piece.matched ? 5 : 0,
-                        elevation: piece.matched ? 5 : 0,
                       }
                     ]}
                     {...this.panResponders[piece.id].panHandlers}
