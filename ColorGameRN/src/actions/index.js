@@ -55,3 +55,9 @@ export function updateMatchesMade(matches) {
     matches
   };
 }
+
+export function resetGrid() {
+  return {
+    type: types.RESET_GRID
+  };
+}

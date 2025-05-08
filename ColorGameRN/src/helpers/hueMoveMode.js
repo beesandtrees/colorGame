@@ -86,8 +86,10 @@ export function createHueLevel(level) {
   };
 }
 // Generate a grid from predefined levels
-export function generateCustomLevelGrid(level, s) {
-  const levelKey = `${level}${s}`;
+export function generateCustomLevelGrid(level, requestedSize) {
+  const levelKey = `${level}`;
+
+  console.log(`Generating custom level grid for ${levelKey}`);
 
   if (!customLevels[levelKey]) {
     console.error(`Level ${levelKey} not found in customLevels`);
@@ -96,8 +98,46 @@ export function generateCustomLevelGrid(level, s) {
 
   const colorGrid = customLevels[levelKey];
   const size = colorGrid.length;
-  const grid = [];
+  
+  // Check if the custom grid size matches our requested size
+  if (size !== requestedSize) {
+    console.warn(`Custom level ${levelKey} has size ${size}, but we need size ${requestedSize}`);
+    
+    // If we need a 5x5 grid but have a larger grid, we can take the center section
+    if (requestedSize === 5 && size > 5) {
+      const startOffset = Math.floor((size - 5) / 2);
+      const grid = [];
+      
+      for (let row = 0; row < 5; row++) {
+        grid[row] = [];
+        for (let col = 0; col < 5; col++) {
+          const sourceRow = startOffset + row;
+          const sourceCol = startOffset + col;
+          const color = colorGrid[sourceRow][sourceCol];
+          
+          const isCorner =
+            (row === 0 && col === 0) ||
+            (row === 0 && col === 4) ||
+            (row === 4 && col === 0) ||
+            (row === 4 && col === 4);
+            
+          grid[row][col] = {
+            color: color,
+            originalRow: row,
+            originalCol: col,
+            isCorner: isCorner
+          };
+        }
+      }
+      return grid;
+    } else {
+      // If the sizes don't match and we can't extract a subgrid, return null
+      return null;
+    }
+  }
 
+  // Normal case - grid size matches what we need
+  const grid = [];
   for (let row = 0; row < size; row++) {
     grid[row] = [];
     for (let col = 0; col < size; col++) {
@@ -119,32 +159,33 @@ export function generateCustomLevelGrid(level, s) {
 }
 
 // Generate the initial solved grid
-export function generateSolvedHueMoveGrid(size, modifier, contrastMultiplier = 1.0, stage = 1, generatorType = 'classic') {
-  // For levels with size 5, use predefined custom grids
-  // if (size === 5) {
-    if (stage === 1) {
-      return generateCustomLevelGrid('level1', size);
-    } else if (stage === 2) {
-      return generateCustomLevelGrid('level2', size);
-    } else if (stage === 3) {
-      return generateCustomLevelGrid('level3', size);
-    } else if (stage === 4 && (size === 5 || size === 6)) {
-      return generateCustomLevelGrid('level4', size);
-    } else if (stage === 5 && size === 5) {
-      return generateCustomLevelGrid('level5', size);
-    } else if (stage === 6 && size === 5) {
-      return generateCustomLevelGrid('level6', size);
+export function generateSolvedHueMoveGrid(size, modifier, contrastMultiplier = 1.0, stage = 1, generatorType = 'classic', randomSeed = null) {
+  // Check if we're trying to use a custom level
+  // These have specific stage numbers corresponding to the customLevels object keys
+  const customStages = [15, 16, 17, 18, 25, 26, 27, 28, 35, 36, 37, 38, 45, 46, 47, 48, 55, 65];
+  
+  if (customStages.includes(stage) && size === 5) {
+    // Try to load a predefined level from customLevels
+    const levelGrid = generateCustomLevelGrid(`level${stage}`, size);
+    if (levelGrid) {
+      console.log(`Using predefined level${stage} grid`);
+      return levelGrid;
+    } else {
+      console.warn(`Custom level${stage} not found in customLevels!`);
     }
-  // }
+  }
 
-  // For other levels or when custom level is not available, use procedural generation
+  // For all other levels, use procedural generation with seed influence
   const grid = [];
-  const baseX = minMax(0, 255);
+  
+  // If randomSeed is provided, use it to influence the base color value
+  // This ensures different patterns even with the same parameters
+  const baseX = randomSeed ? (randomSeed % 256) : minMax(0, 255);
   
   // Get the appropriate color generator
   const useGenerator = rgbGenerators[generatorType] || rgbGenerators.classic;
   
-  console.log(`Generating grid: size=${size}, modifier=${modifier}, baseX=${baseX}, generatorType=${generatorType}`);
+  console.log(`Generating grid: size=${size}, modifier=${modifier}, baseX=${baseX}, generatorType=${generatorType}, seed=${randomSeed || 'none'}`);
   
   try {
     for (let row = 0; row < size; row++) {
@@ -155,10 +196,15 @@ export function generateSolvedHueMoveGrid(size, modifier, contrastMultiplier = 1
                            ? Math.max(1, Math.min(6, Math.round(modifier))) 
                            : 1;
         
+        // If randomSeed is provided, use it to create variations in the row/col values
+        // This creates more varied patterns without changing the generator algorithm
+        const effectiveRow = randomSeed ? (row + (randomSeed % 3) - 1) % size : row;
+        const effectiveCol = randomSeed ? (col + ((randomSeed / 10) % 3) - 1) % size : col;
+        
         let color;
         try {
-          // Use the selected color generator function
-          color = useGenerator(row, col, size, safeModifier, baseX, contrastMultiplier, stage);
+          // Use the selected color generator function with seed-influenced values
+          color = useGenerator(effectiveRow, effectiveCol, size, safeModifier, baseX, contrastMultiplier, stage);
         } catch (error) {
           console.error(`Error generating color: ${error.message}`);
           // Fallback to a default color if there's an error

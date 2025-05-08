@@ -6,3 +6,4 @@ export const LEVEL = 'LEVEL';
 export const GAME_MODE = 'GAME_MODE';
 export const SCORE = 'SCORE';
 export const MATCHES_MADE = 'MATCHES_MADE';
+export const RESET_GRID = 'RESET_GRID';

@@ -53,6 +53,27 @@ const ModeSelect = ({ visible, onSelect, onClose }) => {
             </Text>
           </TouchableOpacity>
           
+          
+          <TouchableOpacity 
+            style={styles.modeButton} 
+            onPress={() => onSelect('dnd-example')}
+          >
+            <Text style={styles.modeTitle}>DnD Example</Text>
+            <Text style={styles.modeDescription}>
+              Basic drag and drop example with colored circles (no game mechanics)
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.modeButton} 
+            onPress={() => onSelect('dnd-match3-simple')}
+          >
+            <Text style={styles.modeTitle}>Simple Match 3 DnD</Text>
+            <Text style={styles.modeDescription}>
+              Basic Match 3 DnD implementation based directly on the example
+            </Text>
+          </TouchableOpacity>
+          
           <TouchableOpacity
             style={styles.closeButton}
             onPress={onClose}

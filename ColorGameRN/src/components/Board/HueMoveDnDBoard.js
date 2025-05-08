@@ -7,29 +7,21 @@ export default class HueMoveDnDBoard extends Component {
     super(props);
     
     // Configuration constants
-    this.GRID_SIZE = 5;
-    this.CELL_SIZE = 60;
+    this.BASE_GRID_SIZE = 5;
+    this.CELL_SIZE = 64;
     this.GAP = 4;
     this.BOARD_PADDING = 10;
     
-    // Configuration for color generation
-    const gridSize = this.GRID_SIZE;
-    const colorModifier = 3; // Try different values (1-6) for different color schemes
-    const contrastMultiplier = 1.2;
-    const stage = 3; // 1, 2, or 3 for different gradient stages
-    const generatorType = 'spiral'; // Options: classic, smooth, highContrast, subtle, radial, spiral, wave, diagonal
+    // Set initial level properties
+    this.currentLevel = 1;
+    this.maxLevel = 15; // Maximum number of levels
     
-    // Generate the solved color grid using helpers
-    this.solvedGrid = hueMoveHelpers.generateSolvedHueMoveGrid(
-      gridSize,
-      colorModifier,
-      contrastMultiplier,
-      stage,
-      generatorType
-    );
+    // Initialize the first level with the appropriate grid size
+    this.initializeLevel(this.currentLevel);
     
-    // Create shuffled version for when game starts
-    this.shuffledGrid = hueMoveHelpers.shuffleHueMoveGrid(this.solvedGrid);
+    // Log the grid size for debugging
+    const initialGridSize = this.getGridSizeForLevel(this.currentLevel);
+    console.log(`Initial grid size for level ${this.currentLevel}: ${initialGridSize}x${initialGridSize}`);
     
     // Convert the solved 2D grid to a flat array of pieces with proper positioning
     const pieces = this.gridToFlatPieces(this.solvedGrid);
@@ -43,7 +35,9 @@ export default class HueMoveDnDBoard extends Component {
       exchangePieceId: null,
       showingSolution: true,
       gameStarted: false,
-      puzzleSolved: false
+      puzzleSolved: false,
+      currentLevel: this.currentLevel,
+      moves: 0
     };
     
     // Initialize pans and pan responders
@@ -52,6 +46,177 @@ export default class HueMoveDnDBoard extends Component {
     
     // Create pan responders
     this.createPanResponders();
+  }
+  
+  // Get configuration for a specific level
+  getLevelConfig(level) {
+    // Array of all available generator types
+    const generatorTypes = [
+      'classic',     // Traditional gradient
+      'smooth',      // Smooth transitions
+      'highContrast', // Bold color differences
+      'subtle',      // Subtle variations
+      'radial',      // Radial pattern
+      'spiral',      // Spiral pattern
+      'wave',        // Wave-like pattern
+      'diagonal'     // Diagonal gradient
+    ];
+    
+    // Define our custom level progression pattern
+    // We use level 15, 25, 35, 45, 55, 65, then 16, 26, 36, 46, etc.
+    
+    // First determine which "decade" (tens digit) we're in
+    const customLevelSets = [
+      [15, 25, 35, 45, 55, 65],  // First set of levels
+      [16, 26, 36, 46],          // Second set of levels
+      [17, 27, 37],          // Third set of levels 
+      [18, 28, 38]           // Fourth set of levels
+    ];
+    
+    // Calculate which set and which position in the set we're using
+    const setIndex = Math.floor((level - 1) / customLevelSets[0].length) % customLevelSets.length;
+    const positionIndex = (level - 1) % customLevelSets[0].length;
+    
+    // Get the appropriate custom level
+    if (setIndex < customLevelSets.length && positionIndex < customLevelSets[setIndex].length) {
+      const customStage = customLevelSets[setIndex][positionIndex];
+      
+      return {
+        colorModifier: 1,
+        contrastMultiplier: 1.0,
+        stage: customStage,
+        generatorType: 'classic'
+      };
+    }
+    
+    // For levels beyond the first 3, create more randomized configurations
+    // Use the level number to seed a deterministic but varied selection
+    
+    // Select generator type based on level, but add variation
+    // Use prime numbers to create non-repeating patterns
+    const levelPrime = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61];
+    const primeIndex = (level - 1) % levelPrime.length;
+    const generatorIndex = (level * levelPrime[primeIndex]) % generatorTypes.length;
+    
+    // Select a colorModifier (1-6) that varies with level
+    // Use a different prime pattern to avoid synchronization with generatorType
+    const colorPrimeOffset = levelPrime[(primeIndex + 3) % levelPrime.length];
+    const colorModifier = ((level * colorPrimeOffset) % 6) + 1;
+    
+    // Calculate contrast multiplier - decrease as levels progress
+    const contrastBase = 1.4;
+    const contrastDecay = 0.03;
+    const contrastMultiplier = Math.max(1.0, contrastBase - ((level - 1) * contrastDecay));
+    
+    // Set stage (1-3) using another prime pattern
+    const stagePrimeOffset = levelPrime[(primeIndex + 7) % levelPrime.length];
+    const stage = ((level * stagePrimeOffset) % 3) + 1;
+    
+    return {
+      colorModifier,
+      contrastMultiplier,
+      stage,
+      generatorType: generatorTypes[generatorIndex]
+    };
+  }
+  
+  // Calculate grid size based on level
+  getGridSizeForLevel(level) {
+    // Increase grid size every 5 levels
+    // Level 1-5: 5x5 grid
+    // Level 6-10: 6x6 grid
+    // Level 11-15: 7x7 grid
+    const levelTier = Math.ceil(level / 5);
+    return this.BASE_GRID_SIZE + Math.min(2, levelTier - 1); // Increase grid size, max 7x7
+  }
+  
+  // Initialize a specific level
+  initializeLevel(level) {
+    // Calculate grid size based on level
+    const gridSize = this.getGridSizeForLevel(level);
+    
+    // Different level configurations
+    const levelConfig = this.getLevelConfig(level);
+    const { colorModifier, contrastMultiplier, stage, generatorType } = levelConfig;
+    
+    console.log(`Initializing level ${level} with ${generatorType} generator, modifier: ${colorModifier}, stage: ${stage}`);
+    
+    // Define custom level progression
+    const customStages = [15, 16, 17, 18, 25, 26, 27, 28, 35, 36, 37, 38, 45, 46, 47, 48, 55, 65];
+    
+    try {
+      // Generate the solved color grid using the appropriate method
+      if (customStages.includes(stage)) {
+        // Check if the custom grid exists by trying to generate it first
+        const customGrid = hueMoveHelpers.generateCustomLevelGrid(`level${stage}`, gridSize);
+        
+        if (customGrid) {
+          console.log(`Using custom level${stage} grid`);
+          this.solvedGrid = customGrid;
+        } else {
+          const randomSeed = Math.floor(Math.random() * 1000) + (level * 100);
+          this.solvedGrid = hueMoveHelpers.generateSolvedHueMoveGrid(
+            gridSize,
+            colorModifier,
+            contrastMultiplier,
+            1, // Use stage 1 as fallback
+            generatorType,
+            randomSeed
+          );
+        }
+      } else {
+        // For other levels, use procedural generation with random seed for variety
+        const randomSeed = Math.floor(Math.random() * 1000) + (level * 100);
+        
+        this.solvedGrid = hueMoveHelpers.generateSolvedHueMoveGrid(
+          gridSize,
+          colorModifier,
+          contrastMultiplier,
+          stage,
+          generatorType,
+          randomSeed // Pass the random seed to influence color generation
+        );
+      }
+      
+      // Verify the grid was created successfully
+      if (!this.solvedGrid || !Array.isArray(this.solvedGrid) || this.solvedGrid.length !== gridSize) {
+        throw new Error('Failed to generate a valid grid');
+      }
+      
+      // Create shuffled version for when game starts
+      this.shuffledGrid = hueMoveHelpers.shuffleHueMoveGrid(this.solvedGrid);
+      
+    } catch (error) {
+      console.error(`Error initializing level: ${error.message}`);
+      
+      // Create a fallback grid - simple procedurally generated colors
+      this.solvedGrid = [];
+      for (let row = 0; row < gridSize; row++) {
+        this.solvedGrid[row] = [];
+        for (let col = 0; col < gridSize; col++) {
+          const isCorner =
+            (row === 0 && col === 0) ||
+            (row === 0 && col === gridSize - 1) ||
+            (row === gridSize - 1 && col === 0) ||
+            (row === gridSize - 1 && col === gridSize - 1);
+          
+          // Generate a simple gradient
+          const r = Math.floor((row / gridSize) * 255);
+          const g = Math.floor((col / gridSize) * 255);
+          const b = Math.floor(((row + col) / (2 * gridSize)) * 255);
+          
+          this.solvedGrid[row][col] = {
+            color: `rgb(${r}, ${g}, ${b})`,
+            originalRow: row,
+            originalCol: col,
+            isCorner: isCorner
+          };
+        }
+      }
+      
+      // Create shuffled version
+      this.shuffledGrid = hueMoveHelpers.shuffleHueMoveGrid(this.solvedGrid);
+    }
   }
   
   // Create pan responders for all pieces
@@ -69,19 +234,16 @@ export default class HueMoveDnDBoard extends Component {
         onStartShouldSetPanResponder: () => {
           // Only allow dragging if the game has started and we're not showing the solution
           if (this.state.showingSolution || !this.state.gameStarted) {
-            console.log("Game not started or showing solution - can't drag");
             return false;
           }
           
           // Don't allow dragging corner pieces
           if (piece.isCorner) {
-            console.log(`Can't drag corner piece at [${piece.originalRow},${piece.originalCol}]`);
             return false;
           }
           return true;
         },
         onPanResponderGrant: () => {
-          console.log(`Started dragging piece ${piece.id}`);
           this.setState({ draggedPieceId: piece.id });
           this.pans[piece.id].setOffset({
             x: this.pans[piece.id].__getValue().x,
@@ -111,7 +273,6 @@ export default class HueMoveDnDBoard extends Component {
           }
         }),
         onPanResponderRelease: () => {
-          console.log(`Released piece ${piece.id}`);
           this.pans[piece.id].flattenOffset();
           
           // Find the closest piece to swap with
@@ -120,11 +281,9 @@ export default class HueMoveDnDBoard extends Component {
           const closestPiece = this.findClosestPiece(id, x + currentPosition.x, y + currentPosition.y);
           
           if (closestPiece) {
-            console.log(`Swapping with piece ${closestPiece.id}`);
             this.swapPieces(id, closestPiece.id);
           } else {
             // No close piece found, animate back to original position
-            console.log(`Returning piece ${piece.id} to original position`);
             Animated.spring(this.pans[id], {
               toValue: { x: 0, y: 0 },
               friction: 5,
@@ -150,8 +309,8 @@ export default class HueMoveDnDBoard extends Component {
     let closestPiece = null;
     let closestDistance = Number.MAX_VALUE;
     
-    // Get piece size from class configuration
-    const PIECE_SIZE = this.CELL_SIZE;
+    // Get piece size from the piece itself (dynamic based on grid size)
+    const PIECE_SIZE = currentPiece.size || this.CELL_SIZE;
     // The distance threshold is 75% of the piece size
     const DISTANCE_THRESHOLD = PIECE_SIZE * 0.75;
     
@@ -175,12 +334,28 @@ export default class HueMoveDnDBoard extends Component {
     return closestDistance < DISTANCE_THRESHOLD ? closestPiece : null;
   }
   
+  // Helper method to calculate cell size based on grid size
+  getCellSizeForGridSize(gridSize) {
+    // Dynamically adjust cell size based on grid size to fit the board
+    // Base size is 60px for 5x5 grid
+    const maxBoardWidth = 320; // Maximum board width
+    const totalGaps = gridSize - 1;
+    const availableSpace = maxBoardWidth - (this.BOARD_PADDING * 2) - (this.GAP * totalGaps);
+    const cellSize = Math.floor(availableSpace / gridSize);
+    
+    return Math.min(this.CELL_SIZE, cellSize);
+  }
+  
   // Helper method to convert a 2D grid to a flat array of pieces with positions
   gridToFlatPieces(grid) {
     const pieces = [];
     let id = 1;
     
-    for (let row = 0; row < grid.length; row++) {
+    // Calculate appropriate cell size based on the grid size
+    const gridSize = grid.length;
+    const cellSize = this.getCellSizeForGridSize(gridSize);
+    
+    for (let row = 0; row < gridSize; row++) {
       for (let col = 0; col < grid[row].length; col++) {
         const gridPiece = grid[row][col];
         pieces.push({
@@ -189,8 +364,9 @@ export default class HueMoveDnDBoard extends Component {
           originalRow: gridPiece.originalRow,
           originalCol: gridPiece.originalCol,
           isCorner: gridPiece.isCorner,
-          x: this.BOARD_PADDING + col * (this.CELL_SIZE + this.GAP),
-          y: this.BOARD_PADDING + row * (this.CELL_SIZE + this.GAP)
+          x: this.BOARD_PADDING + col * (cellSize + this.GAP),
+          y: this.BOARD_PADDING + row * (cellSize + this.GAP),
+          size: cellSize // Store the cell size with each piece
         });
         id++;
       }
@@ -212,8 +388,6 @@ export default class HueMoveDnDBoard extends Component {
       // Reset all panResponders and pans for the new piece positions
       this.resetPanResponders();
     });
-    
-    console.log('Game started - you can now drag and drop pieces to solve the puzzle');
   }
   
   // Reset all PanResponders
@@ -244,13 +418,47 @@ export default class HueMoveDnDBoard extends Component {
       // Reset all panResponders for the new piece positions
       this.resetPanResponders();
     });
+  }
+  
+  // Advance to the next level
+  nextLevel = () => {
+    // Update the current level, wrapping around if we reach the maximum
+    if (this.currentLevel >= this.maxLevel) {
+      this.currentLevel = 1;
+    } else {
+      // Increment the level
+      this.currentLevel += 1;
+    }
     
-    console.log('Level reset - showing solution');
+    // Initialize the new level
+    this.initializeLevel(this.currentLevel);
+    
+    // Convert the solved 2D grid to a flat array of pieces
+    const solvedPieces = this.gridToFlatPieces(this.solvedGrid);
+    
+    // Update the state with the new level information
+    this.setState({
+      pieces: solvedPieces,
+      showingSolution: true,
+      gameStarted: false,
+      draggedPieceId: null,
+      exchangePieceId: null,
+      puzzleSolved: false,
+      currentLevel: this.currentLevel,
+      moves: 0
+    }, () => {
+      // Reset all panResponders for the new piece positions
+      this.resetPanResponders();
+    });
   }
   
   // Check if the puzzle is solved (all pieces in correct positions)
   checkIfSolved = () => {
-    const { pieces } = this.state;
+    const { pieces, currentLevel } = this.state;
+    
+    // Get the current grid size and cell size
+    const gridSize = this.getGridSizeForLevel(currentLevel);
+    const cellSize = this.getCellSizeForGridSize(gridSize);
     
     // Algorithm: each piece should be in the position corresponding to its originalRow and originalCol
     for (const piece of pieces) {
@@ -258,8 +466,9 @@ export default class HueMoveDnDBoard extends Component {
       if (piece.isCorner) continue;
       
       // Get the row and column of this piece based on its current position
-      const row = Math.floor((piece.y - this.BOARD_PADDING) / (this.CELL_SIZE + this.GAP));
-      const col = Math.floor((piece.x - this.BOARD_PADDING) / (this.CELL_SIZE + this.GAP));
+      // Using the cell size appropriate for this grid
+      const row = Math.floor((piece.y - this.BOARD_PADDING) / (cellSize + this.GAP));
+      const col = Math.floor((piece.x - this.BOARD_PADDING) / (cellSize + this.GAP));
       
       // Check if the piece is in its original position
       if (row !== piece.originalRow || col !== piece.originalCol) {
@@ -269,8 +478,12 @@ export default class HueMoveDnDBoard extends Component {
     }
     
     // All pieces are in their original positions
-    console.log('Puzzle solved!');
-    this.setState({ puzzleSolved: true });
+    const isFinalLevel = currentLevel >= this.maxLevel;
+    
+    console.log(`Puzzle solved! ${isFinalLevel ? 'This is the final level!' : ''}`);
+    this.setState({ 
+      puzzleSolved: true 
+    });
   }
   
   swapPieces(id1, id2) {
@@ -299,7 +512,10 @@ export default class HueMoveDnDBoard extends Component {
     this.pans[id2].setValue({ x: 0, y: 0 });
     
     // Update state
-    this.setState({ pieces }, () => {
+    this.setState({ 
+      pieces,
+      moves: this.state.moves + 1
+    }, () => {
       // Reset the pan responders for the new piece positions
       this.resetPanResponders();
       
@@ -309,28 +525,29 @@ export default class HueMoveDnDBoard extends Component {
   }
   
   render() {
-    const { draggedPieceId, exchangePieceId, showingSolution, gameStarted, puzzleSolved } = this.state;
+    const { draggedPieceId, exchangePieceId, showingSolution, gameStarted, puzzleSolved, currentLevel } = this.state;
     
     return (
       <View style={styles.container}>
-        <Text style={styles.title}>HueMove Drag and Drop</Text>
+        <Text style={styles.title}>HueMove Drag and Drop - Level {currentLevel}</Text>
         
         {/* Game status text */}
         {showingSolution && (
           <Text style={styles.statusText}>
-            Memorize the pattern, then press Start Level to begin
+            Level {currentLevel}: Memorize the pattern, then press Start Level to begin
           </Text>
         )}
         
         {!showingSolution && gameStarted && !puzzleSolved && (
           <Text style={styles.statusText}>
-            Drag pieces to recreate the pattern
+            Level {currentLevel}: Drag pieces to recreate the pattern
           </Text>
         )}
         
         {!showingSolution && gameStarted && puzzleSolved && (
           <Text style={styles.winText}>
-            🎉 Congratulations! Puzzle solved! 🎉
+            🎉 Congratulations! Level {currentLevel} completed! 🎉
+            {currentLevel >= this.maxLevel && "\nYou've completed the final level! Try again from Level 1."}
           </Text>
         )}
         
@@ -344,7 +561,10 @@ export default class HueMoveDnDBoard extends Component {
                   backgroundColor: piece.color,
                   left: Animated.add(piece.x, this.pans[piece.id].x),
                   top: Animated.add(piece.y, this.pans[piece.id].y),
-                  zIndex: draggedPieceId === piece.id ? 10 : 1,
+                  width: piece.size || this.CELL_SIZE,
+                  height: piece.size || this.CELL_SIZE,
+                  borderRadius: (piece.size || this.CELL_SIZE) / 2,
+                  zIndex: draggedPieceId === piece.id ? 10 : (exchangePieceId === piece.id ? 5 : 1),
                   borderWidth: piece.isCorner ? 3 : (draggedPieceId === piece.id ? 2 : 0),
                   borderColor: piece.isCorner ? '#FFFFFF' : (draggedPieceId === piece.id ? 'white' : 'transparent'),
                   opacity: exchangePieceId === piece.id ? 0.5 : 1,
@@ -389,9 +609,11 @@ export default class HueMoveDnDBoard extends Component {
               
               <TouchableOpacity 
                 style={styles.nextButton}
-                onPress={this.resetLevel}
+                onPress={this.nextLevel}
               >
-                <Text style={styles.buttonText}>Next Level</Text>
+                <Text style={styles.buttonText}>
+                  {currentLevel >= this.maxLevel ? 'Start Over (Level 1)' : 'Next Level'}
+                </Text>
               </TouchableOpacity>
             </View>
           )}
@@ -444,12 +666,13 @@ const styles = StyleSheet.create({
     padding: 10,
     position: 'relative',
     marginBottom: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   piece: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
     position: 'absolute',
+    // width and height set dynamically
+    // borderRadius set dynamically
   },
   buttonContainer: {
     width: '100%',
@@ -508,5 +731,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 2,
     marginLeft: 10,
+  },
+  disabledButton: {
+    backgroundColor: '#B0BEC5', // Gray color
+    opacity: 0.7,
+    elevation: 0,
+    shadowOpacity: 0,
   }
 });

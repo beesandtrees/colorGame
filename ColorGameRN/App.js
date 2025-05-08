@@ -17,6 +17,8 @@ import Board from './src/components/Board/Board.js';
 import Match3Board from './src/components/Board/Match3Board.js';
 import HueMoveBoard from './src/components/Board/HueMoveBoard.js';
 import HueMoveDnDBoard from './src/components/Board/HueMoveDnDBoard.js';
+import DndExampleWrapper from './src/components/Board/DndExampleWrapper.js';
+import DnDMatch3SimpleWrapper from './src/components/Board/DnDMatch3SimpleWrapper.js';
 import WinLose from './src/components/WinLose/WinLose.js';
 import ModeSelect from './src/components/ModeSelect/ModeSelect.js';
 
@@ -54,6 +56,22 @@ class Info extends Component {
         "• CORNER tiles are locked and cannot be moved\n\n" +
         "Look at the corner pieces - they show what the color pattern should be. The goal is to arrange all colors into a smooth gradient that flows across the grid.\n\n" +
         "Strategy tip: Work on one row or column at a time, starting from the corners!";
+    } else if (gameMode === 'dnd-example') {
+      instructions = 
+        "Drag & Drop Example:\n\n" +
+        "• This is a simple example of drag and drop functionality\n" +
+        "• DRAG any colored circle to move it\n" +
+        "• DROP it on another circle to swap positions\n" +
+        "• Circles will return to their original position if not dropped on a valid target\n\n" +
+        "This example has no game mechanics - it's just meant to demonstrate the drag and drop interaction.";
+    } else if (gameMode === 'dnd-match3-simple') {
+      instructions = 
+        "Simple Match 3 Drag & Drop:\n\n" +
+        "• This is a basic Match 3 implementation using drag and drop\n" +
+        "• DRAG any colored circle to move it\n" +
+        "• DROP it on another circle to swap positions\n" +
+        "• Try to create matches of 3 or more of the same color\n\n" +
+        "This is a simplified version with minimal game mechanics based directly on the original drag and drop example.";
     }
     
     return (
@@ -98,7 +116,7 @@ class AppContent extends Component {
   getLevel(levelNumber, gameMode) {
     if (gameMode === 'classic') {
       return gamehelpers.createLevel(levelNumber);
-    } else if (gameMode === 'match3') {
+    } else if (gameMode === 'match3' || gameMode === 'dnd-match3') {
       return match3Helpers.createMatch3Level(levelNumber);
     } else if (gameMode === 'huemove') {
       return hueMoveHelpers.createHueLevel(levelNumber);
@@ -150,7 +168,7 @@ class AppContent extends Component {
         level.numberofrows,
         level.numberofcolors
       );
-    } else if (game.gameMode === 'match3') {
+    } else if (game.gameMode === 'match3' || game.gameMode === 'dnd-match3') {
       grid = match3Helpers.generateMatch3Grid(
         level.numberofrows,
         level.numberofcolors
@@ -345,6 +363,54 @@ class AppContent extends Component {
           </View>
         </View>
       );
+    } else if (game.gameMode === 'dnd-example') {
+      return (
+        <View style={styles.header}>
+          <Logo />
+          <Text style={styles.title}>Drag & Drop Example</Text>
+          <View style={styles.headerButtons}>
+            <TouchableOpacity 
+              style={styles.headerButton}
+              onPress={() => this.showModeSelect(true)}
+            >
+              <Text style={styles.headerButtonText}>Switch Mode</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.infoButton}
+              onPress={() => this.showInfo(true)}
+            >
+              <Text style={styles.infoButtonText}>?</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.goalText}>
+            Drag any circle and drop it on another circle to swap positions
+          </Text>
+        </View>
+      );
+    } else if (game.gameMode === 'dnd-match3-simple') {
+      return (
+        <View style={styles.header}>
+          <Logo />
+          <Text style={styles.title}>Simple Match 3 DnD</Text>
+          <View style={styles.headerButtons}>
+            <TouchableOpacity 
+              style={styles.headerButton}
+              onPress={() => this.showModeSelect(true)}
+            >
+              <Text style={styles.headerButtonText}>Switch Mode</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.infoButton}
+              onPress={() => this.showInfo(true)}
+            >
+              <Text style={styles.infoButtonText}>?</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.goalText}>
+            Drag circles to form matches of 3 or more of the same color
+          </Text>
+        </View>
+      );
     }
   }
   
@@ -421,14 +487,22 @@ class AppContent extends Component {
           restart={(startover) => this.restart(startover)}
         />
       );
+    } else if (game.gameMode === 'dnd-example') {
+      return (
+        <DndExampleWrapper />
+      );
+    } else if (game.gameMode === 'dnd-match3-simple') {
+      return (
+        <DnDMatch3SimpleWrapper />
+      );
     }
   }
   
   renderFooter() {
     const { game } = this.props;
     
-    // Don't show the footer New Game button for Hue Move modes
-    if (game.gameMode === 'huemove' || game.gameMode === 'huemovednd') {
+    // Don't show the footer New Game button for Hue Move modes, DnD Example, or DnD Match3 Simple
+    if (game.gameMode === 'huemove' || game.gameMode === 'huemovednd' || game.gameMode === 'dnd-example' || game.gameMode === 'dnd-match3-simple') {
       return null;
     }
     
@@ -452,7 +526,7 @@ class AppContent extends Component {
       <SafeAreaView 
         style={[
           styles.container, 
-          { backgroundColor: game.gameMode === 'huemove' || game.gameMode === 'huemovednd' ? '#333333' : baseColor }
+          { backgroundColor: game.gameMode === 'huemove' || game.gameMode === 'huemovednd' || game.gameMode === 'dnd-example' || game.gameMode === 'dnd-match3-simple' ? '#333333' : baseColor }
         ]}
       >
         <StatusBar style="light" />

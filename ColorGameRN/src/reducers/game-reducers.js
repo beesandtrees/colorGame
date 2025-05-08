@@ -55,6 +55,11 @@ export default function GameReducer(state = initialState, action = {}) {
         ...state,
         matchesMade: action.matches
       };
+    case types.RESET_GRID:
+      return {
+        ...state,
+        grid: []
+      };
     default:
       return state;
   }
